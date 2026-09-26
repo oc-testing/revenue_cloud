@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Revenue Cloud Field Notes</title>
+<style>
+  :root{
+    --bg:#14171b;
+    --surface:#1b1f24;
+    --surface-2:#22262c;
+    --line:#343a41;
+    --text:#ece8de;
+    --text-dim:#9ba1a8;
+    --accent:#c9a227;
+    --accent-dim:#8a742a;
+    --good:#5a9e6f;
+    --bad:#bd5a45;
+    --radius:10px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0; padding:0; height:100%; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    overscroll-behavior-y:none;
+  }
+  h1,h2,h3,.serif{font-family:Georgia,"Iowan Old Style","Palatino Linotype",serif;}
+  #app{max-width:480px; margin:0 auto; height:100vh; display:flex; flex-direction:column; position:relative;}
+
+  /* Top bar */
+  header{padding:16px 18px 10px; border-bottom:1px solid var(--line); flex-shrink:0;}
+  header h1{margin:0 0 2px; font-size:19px; font-weight:600; letter-spacing:0.2px;}
+  header .sub{color:var(--text-dim); font-size:12.5px;}
+
+  /* Category chips */
+  .chips{display:flex; flex-wrap:wrap; gap:6px; padding:10px 18px 12px; flex-shrink:0; border-bottom:1px solid var(--line);}
+  .chip{padding:6px 12px; border-radius:999px; border:1px solid var(--line);
+    background:var(--surface); color:var(--text-dim); font-size:12.5px; white-space:nowrap; cursor:pointer;}
+  .chip.active{border-color:var(--accent); color:var(--accent); background:rgba(201,162,39,0.08);}
+
+  main{flex:1; overflow-y:auto; padding:18px; padding-bottom:90px;}
+
+  /* Bottom nav */
+  nav{position:absolute; bottom:0; left:0; right:0; display:flex; border-top:1px solid var(--line);
+    background:var(--surface); padding:6px 6px calc(6px + env(safe-area-inset-bottom));}
+  nav button{flex:1; background:none; border:none; color:var(--text-dim); font-size:11.5px; padding:8px 4px;
+    display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer;}
+  nav button.active{color:var(--accent);}
+  nav .ico{font-size:18px;}
+
+  /* Flashcard */
+  .progress-row{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; font-size:12.5px; color:var(--text-dim);}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    min-height:220px; padding:22px; display:flex; flex-direction:column; justify-content:center;
+    cursor:pointer; position:relative;}
+  .card .tag{position:absolute; top:14px; left:18px; font-size:11px; color:var(--accent); letter-spacing:0.3px;}
+  .card .star{position:absolute; top:12px; right:14px; font-size:18px; color:var(--text-dim); background:none; border:none; cursor:pointer; padding:4px;}
+  .card .star.on{color:var(--accent);}
+  .card .term{font-size:20px; font-weight:600; margin-top:14px; line-height:1.35;}
+  .card .def{font-size:15px; color:var(--text-dim); line-height:1.5; margin-top:14px;}
+  .card .flip-hint{position:absolute; bottom:12px; right:16px; font-size:11px; color:var(--text-dim);}
+  .card-controls{display:flex; gap:10px; margin-top:16px;}
+  .card-controls button{flex:1; padding:12px; border-radius:var(--radius); border:1px solid var(--line);
+    background:var(--surface-2); color:var(--text); font-size:14px; cursor:pointer;}
+  .card-controls button.primary{background:var(--accent); border-color:var(--accent); color:#1b1508; font-weight:600;}
+
+  /* Quiz */
+  .q-head{display:flex; justify-content:space-between; font-size:12.5px; color:var(--text-dim); margin-bottom:10px;}
+  .q-text{font-size:16px; font-weight:600; line-height:1.4; margin-bottom:16px;}
+  .opt{display:block; width:100%; text-align:left; padding:13px 14px; margin-bottom:9px; border-radius:var(--radius);
+    border:1px solid var(--line); background:var(--surface); color:var(--text); font-size:14.5px; line-height:1.4; cursor:pointer;}
+  .opt .letter{color:var(--accent); font-weight:700; margin-right:8px;}
+  .opt.correct{border-color:var(--good); background:rgba(90,158,111,0.12);}
+  .opt.incorrect{border-color:var(--bad); background:rgba(189,90,69,0.12);}
+  .explain{margin-top:12px; padding:14px; background:var(--surface-2); border-radius:var(--radius); font-size:13.5px; color:var(--text-dim); line-height:1.5; display:none;}
+  .explain.show{display:block;}
+  .quiz-next{margin-top:16px; width:100%; padding:13px; border-radius:var(--radius); border:none;
+    background:var(--accent); color:#1b1508; font-weight:600; font-size:14.5px; cursor:pointer; display:none;}
+  .quiz-next.show{display:block;}
+  .quiz-summary{text-align:center; padding:30px 10px;}
+  .quiz-summary .score{font-size:44px; font-weight:700; color:var(--accent); margin:6px 0;}
+  .quiz-summary .pct{color:var(--text-dim); margin-bottom:22px;}
+  .quiz-summary button{padding:12px 22px; border-radius:var(--radius); border:1px solid var(--accent); background:none; color:var(--accent); font-size:14px; cursor:pointer;}
+
+  /* Checklist */
+  .topic-block{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:20px;}
+  .topic-block h3{font-size:17px; margin:0 0 14px; color:var(--accent); font-weight:600;}
+  .topic-block h3 .weight{color:var(--text-dim); font-weight:400; font-size:12px;}
+  .topic-block .count{font-size:12px; color:var(--text-dim); margin-bottom:14px;}
+  .section-head{font-size:12.5px; color:var(--text); font-weight:600; margin:16px 0 4px; padding-top:10px; border-top:1px solid var(--line);}
+  .topic-block .section-head:first-of-type{border-top:none; padding-top:0; margin-top:0;}
+  .item{display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid var(--line);}
+  .item:last-child{border-bottom:none;}
+  .box{width:20px; height:20px; border-radius:5px; border:1px solid var(--line); flex-shrink:0; margin-top:1px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; background:var(--surface-2);}
+  .box.checked{background:var(--accent); border-color:var(--accent); color:#1b1508; font-size:13px; font-weight:700;}
+  .item p{margin:0; font-size:14px; line-height:1.4; cursor:pointer;}
+  .item.done p{color:var(--text-dim); text-decoration:line-through;}
+
+  /* Concepts (no-flip, read-through) */
+  .concept-card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:22px; display:flex; flex-direction:column; min-height:280px;}
+  .concept-card .tag{font-size:11px; color:var(--accent); letter-spacing:0.3px; margin-bottom:10px;}
+  .concept-card h2{font-size:19px; margin:0 0 14px; line-height:1.3;}
+  .concept-card .body p{font-size:14.5px; color:var(--text-dim); line-height:1.6; margin:0 0 12px;}
+  .concept-card .body p:last-child{margin-bottom:0;}
+  .concept-card .body ul{margin:0 0 12px; padding-left:20px;}
+  .concept-card .body li{font-size:14.5px; color:var(--text-dim); line-height:1.6; margin-bottom:6px;}
+  .concept-card .body strong{color:var(--text); font-weight:600;}
+
+  .empty{text-align:center; color:var(--text-dim); padding:40px 20px; font-size:14px;}
+  .reset-link{display:block; text-align:center; margin:20px 0 4px; color:var(--text-dim); font-size:12px; text-decoration:underline; cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1 class="serif">Revenue Cloud Field Notes</h1>
+    <div class="sub" id="headerSub">Flashcards for the Revenue Cloud Consultant exam</div>
+  </header>
+  <div class="chips" id="chips"></div>
+  <main id="main"></main>
+  <nav>
+    <button class="navbtn active" data-view="cards"><span class="ico">◈</span>Cards</button>
+    <button class="navbtn" data-view="concepts"><span class="ico">▥</span>Concepts</button>
+    <button class="navbtn" data-view="checklist"><span class="ico">▤</span>Checklist</button>
+  </nav>
+</div>
+
+<script>
+/* ---------------- DATA ---------------- */
+
+const CATEGORIES = ["All","Context Service","Pricing/BRE","Advanced Configurator","Qualification","Contracts","Assets","Billing","DRO","Permissions","Approvals","APIs","Order Mgmt","Project Delivery","OmniStudio","Agentforce","Reporting","Catalog Mgmt"];
+
+const CARDS = [
+ {cat:"Context Service", term:"Mapping Intent", def:"The setting on a Context Mapping that determines its purpose: Hydration, Persistence, Association, or Translation. Can be combined on one mapping."},
+ {cat:"Context Service", term:"Hydration (intent)", def:"Loads a cache from a source object — the 'read' direction."},
+ {cat:"Context Service", term:"Persistence (intent)", def:"Loads sink objects from the cache — the 'write back' direction."},
+ {cat:"Context Service", term:"Association (intent)", def:"Structural mapping only; attaches nodes/attributes without validating a real database relationship."},
+ {cat:"Context Service", term:"Translation (intent)", def:"Reshapes data already in the cache into a different representation. No fetch, no write."},
+ {cat:"Context Service", term:"Context Hydration", def:"The runtime process of reading data from mapped sources into a context instance for a consuming app to use."},
+ {cat:"Context Service", term:"Extend vs. Clone", def:"Extend inherits standard nodes/attributes and auto-syncs on future Salesforce updates. Clone is a fully independent snapshot — no Sync option, no auto-updates."},
+ {cat:"Context Service", term:"Cross-Context Mapping", def:"Maps a node/attribute in ONE context definition directly to a node/attribute in ANOTHER context definition — not to a raw Salesforce object. Example: carrying a custom field from Product to Quote Line Item goes Product (object) → Product Discovery Context (Product node) → CROSS-CONTEXT MAPPING → Sales Transaction Context (SalesTransactionItem node) → Quote Line Item (object). Object mappings bookend it; the cross-context mapping is the bridge between the two context definitions in the middle."},
+ {cat:"Context Service", term:"ProductDiscoveryContext", def:"Standard context definition used by Product Discovery — backs qualification/disqualification rules."},
+ {cat:"Context Service", term:"SalesTransactionContext", def:"Standard context definition mapping Quote, Asset, Order — backs pricing procedures."},
+
+ {cat:"Pricing/BRE", term:"Decision Table", def:"A BRE lookup table: input conditions matched against rows return output values. Must be activated before use; source-data changes require a refresh."},
+ {cat:"Pricing/BRE", term:"Full vs. Incremental Refresh", def:"Full reloads every row (slow on large tables). Incremental loads only changed records, but requires at least one prior full refresh — if it fails, a full refresh auto-runs."},
+ {cat:"Pricing/BRE", term:"Standard vs. Advanced table", def:"A standard table rounds a Number/Currency field to its defined scale. An advanced table returns the value exactly as stored, ignoring the field's declared precision."},
+ {cat:"Pricing/BRE", term:"Price Adjustment Schedule", def:"Defines volume/tier-based discounts via Tiers (lower/upper bound, last tier's upper bound left blank for 'no limit')."},
+ {cat:"Pricing/BRE", term:"Price Adjustment Matrix", def:"Pricing procedure element supporting discounts driven by multiple criteria at once, backed by a decision table."},
+ {cat:"Pricing/BRE", term:"Discount Distribution Service", def:"Applies one header-level discount and spreads it across eligible lines by rule. Supports a 'target override' — rep enters a final quote amount instead of a percentage."},
+ {cat:"Pricing/BRE", term:"RevSignaling.SignalingApexProcessor", def:"The Apex interface a pricing-hook class must implement; has a single execute method."},
+ {cat:"Pricing/BRE", term:"Apex hook placement rule", def:"With the Revenue Management process type, an Apex hook must be the first or last element in the Procedure Plan sequence."},
+ {cat:"Pricing/BRE", term:"Is Price Impacting", def:"Flag on a Product Classification attribute; must be true, plus a Price Adjustment Schedule entry and a Sync Pricing Data run, before an attribute affects price."},
+
+ {cat:"Advanced Configurator", term:"CML", def:"Constraint Modeling Language — how logic is written in the Advanced Configurator. Runs on the Constraint Rules Engine."},
+ {cat:"Advanced Configurator", term:"ConstraintEngineNodeStatus", def:"A Text Area (5000) field, read/write, kept OFF page layouts. Created on Quote Line Item, Order Product, and Asset Action Source. Then added as an INPUTOUTPUT/STRING attribute to the SalesTransactionItem node in the extended context definition."},
+ {cat:"Advanced Configurator", term:"AssetConstraintEngineNodeStatus", def:"A second, separate tracking field — added as an INPUTOUTPUT/STRING attribute to the AssetActionSource node (not SalesTransactionItem). Both fields get mapped in the Quote, Order, and Asset mappings, with TransactionType mapping confirmed."},
+ {cat:"Advanced Configurator", term:"QuoteLineItem before-insert trigger", def:"Required as part of setup: copies the latest ConstraintEngineNodeStatus from related AssetActionSource records onto the new Quote Line Item."},
+ {cat:"Advanced Configurator", term:"Enabling Advanced Configurator", def:"Setup → Revenue Settings → Set Up Advanced Configuration Rules and Constraints. This is the specific setting that makes Advanced Configurator the default engine."},
+ {cat:"Advanced Configurator", term:"Basic Logic Constraint", def:"Enforces a constraint that is always true — unconditional."},
+ {cat:"Advanced Configurator", term:"Conditional Logic Constraint", def:"Enforces a constraint only when certain conditions are true — the conditional counterpart to Basic Logic Constraint."},
+ {cat:"Advanced Configurator", term:"Dynamic Message Rule", def:"Displays an informational, warning, or error message when certain conditions are true."},
+ {cat:"Advanced Configurator", term:"Require Rule", def:"Automatically adds an item to the configuration based on conditions."},
+ {cat:"Advanced Configurator", term:"relation (CML)", def:"The construct defining a parent-child link in a bundle, e.g. 'relation monitor24in1080p : Monitor24in1080p[1..3];' — declares which child products can attach and how many."},
+ {cat:"Advanced Configurator", term:"Local Cardinality — the fields", def:"Set per component: Require this component, Include component by default, Allow quantity changes, Price Includes Component, Quantity Scaling Method, Min/Max/default Quantity. Editable only at the 1st level of the bundle hierarchy; overrides happen at 2nd level and beyond."},
+ {cat:"Advanced Configurator", term:"Local Cardinality — dependency rules", def:"If 'Require this component' is selected, 'Include component by default' MUST also be selected. Both must be DESELECTED for product classification components. If 'Price Includes Component' is selected, 'Allow quantity changes' must be deselected — you can't let a customer change the quantity of something whose price is baked into the bundle price."},
+ {cat:"Advanced Configurator", term:"Quantity Scaling Method", def:"Governs how a child's quantity behaves as the parent's quantity changes: None (child qty only changes via Allow Quantity Changes, independent of parent), Constant (child qty is fixed at design-time value, never changes at runtime — Allow Quantity Changes must be deselected), Proportional (default when Allow Quantity Changes isn't selected — child qty scales with parent: parent qty A × child qty B = A×B units in the runtime cart)."},
+ {cat:"Advanced Configurator", term:"Proportional scaling — the lock trap", def:"With Proportional scaling, the child quantity IS editable, but only inside the Product Configurator. Once the product is added to a quote, that quantity field becomes READ-ONLY in the Sales Transaction Line Editor — because the line editor displays the final multiplied quantity (A×B), not the editable per-parent-unit quantity the configurator worked with."},
+ {cat:"Advanced Configurator", term:"Override Local Cardinality", def:"Allowed at the 2nd level and beyond (not the 1st level). The original value is preserved and restorable. Overriding a product added multiple times in a bundle overrides every instance of it throughout the bundle. Requires Manage Product Catalog permission; the Structure tab itself requires the ARC Access permission set."},
+ {cat:"Advanced Configurator", term:"Group Cardinality — the fields", def:"Max Number of Components and Min Number of Components — the min/max DISTINCT components users can add to a product GROUP at runtime. Max must always be ≥ Min. Constrains the group as a whole, not any single item inside it."},
+ {cat:"Advanced Configurator", term:"Nested Group Cardinality — enforcement rule", def:"With nested groups, the PARENT group's cardinality is NOT enforced at runtime — only the LOWEST-level group's cardinality is enforced. If the nested group contains a product classification, its cardinality governs how many classification-based products can be added; if it contains products directly, its cardinality governs the product count directly."},
+ {cat:"Advanced Configurator", term:"Group + Classification — two separate cardinalities", def:"A product classification component can only be added UNDER a product group component — and the group and the classification each carry their OWN, independent cardinality. Don't assume one governs the other."},
+ {cat:"Advanced Configurator", term:"Override Group Cardinality", def:"Same pattern as Local Cardinality overrides: allowed at the 2nd level and beyond, original value preserved and restorable."},
+ {cat:"Advanced Configurator", term:"Cardinality (in CML)", def:"The [min..max] range on a 'relation' declaration, e.g. relation X : Y[0..3]. Salesforce's own guidance: specify the SMALLEST required cardinality — an overly high max increases the risk of unbound variables that force the constraint engine to backtrack, hurting performance."},
+ {cat:"Advanced Configurator", term:"Global constant", def:"A reusable, centrally-defined value referenced across multiple CML rules — e.g. defining 'red' once instead of hardcoding it in every rule. Preferred over hardcoding or repeating local variables when the same value/logic will be needed in future rules."},
+ {cat:"Advanced Configurator", term:"Local variable", def:"A value scoped to a single rule. Works for a one-off case, but repeating the same local variable across multiple rules is a maintainability red flag — a global constant is preferred once reuse is likely."},
+ {cat:"Advanced Configurator", term:"Default value (CML)", def:"A pre-selected value on a relation when the configuration loads, e.g. 'default Laptopi58GB(2);' — sets an initial quantity/selection without the user having to choose it."},
+ {cat:"Advanced Configurator", term:"Context-aware rule", def:"A CML rule that references a field OUTSIDE the bundle itself — e.g. an Opportunity or Account field — to dynamically adjust which options or attribute values are valid at runtime, not just sibling attributes within the same configuration."},
+ {cat:"Advanced Configurator", term:"Standard vs. Advanced Configurator", def:"Standard (BRE) applies rules sequentially, one direction. Advanced (CML) is constraint-based — a solver resolves dependencies in both directions and can auto-resolve conflicts."},
+ {cat:"Advanced Configurator", term:"Visual Builder vs. CML Editor", def:"Two editors for the same constraint model; both support the same rules, but CML allows more complex logic. You can switch between them anytime."},
+
+ {cat:"Qualification", term:"Qualification rule", def:"Matches a product/category against criteria — if matched, it's offered."},
+ {cat:"Qualification", term:"Disqualification rule", def:"Matches a product/category against criteria — if matched, it's removed. Common pattern: broad qualification narrowed by a disqualification exception."},
+ {cat:"Qualification", term:"Product Qualification vs. Product Category Qualification", def:"Product Qualification handles both products and categories and is the only usage type selectable in Product Discovery Settings."},
+ {cat:"Qualification", term:"EvaluateQualification / EvaluateDisqualification", def:"Procedure elements that must reference a matching decision-table type (qualification-type or disqualification-type) or the procedure errors."},
+ {cat:"Qualification", term:"Picklist attribute limitation", def:"Context definition attributes of type picklist are NOT supported for qualification rule procedures."},
+
+ {cat:"Contracts", term:"Clause library", def:"Reusable, pre-approved legal language so legal defines terms once and sales reuses them."},
+ {cat:"Contracts", term:"Document reconciliation", def:"Syncs changes made in an offline Word document back into Salesforce during negotiation."},
+ {cat:"Contracts", term:"Redlining", def:"Tracks changes across contract versions during authoring/negotiation — distinct from reconciliation, which is about offline edits specifically."},
+ {cat:"Contracts", term:"Version management", def:"Every substantive change auto-creates a new contract version, giving a full audit trail."},
+ {cat:"Contracts", term:"Create Contract from Quote", def:"Standard flow generating a contract off an active quote; can contract either the Net Unit Price or the Discount Level."},
+
+ {cat:"Assets", term:"Asset Action (AA)", def:"The audit-trail record capturing what transaction changed an asset. Created for amendments, renewals, AND cancellations, with a business category (e.g. Upsells, Cancellations)."},
+ {cat:"Assets", term:"Asset State Period (ASP)", def:"Represents a span of time when quantity, amount, and MRR all stay the same. A new ASP is created whenever any of those changes. Cancellations do NOT create a new ASP."},
+ {cat:"Assets", term:"Managed Asset Viewer", def:"Consolidated, filterable list of everything an account owns, embedded on Account/Contract pages — entry point for amend/renew/cancel."},
+ {cat:"Assets", term:"The migrated-asset trap", def:"Amend/renew/cancel only work on assets created through standard order activation. Migrated or manually-created assets lack the needed data relationships — fix is a new order through Revenue Cloud, not patching the asset."},
+ {cat:"Assets", term:"Automatic Renewal vs. Override Renewal Term", def:"Automatic extends at term end per the predefined term. Override lets the rep set custom start/end dates and can trigger a refund quote for unused portion."},
+ {cat:"Assets", term:"Rollback tool", def:"Reverses the most recent future-dated transaction on an asset."},
+ {cat:"Assets", term:"Lot-based renewals", def:"Honor original purchase pricing across multiple renewal transactions; price uplifts can apply to individual lots."},
+ {cat:"Assets", term:"Access Customer Asset Lifecycle Management APIs", def:"The permission required to use amend/renew/cancel APIs at all. Also requires Read access to Asset, Asset Action, Asset Action Source, and Asset State Period. This is the backend gate — separate from anything on a page layout."},
+ {cat:"Assets", term:"Restricting an asset action: permission, not UI", def:"To stop a user from amending/renewing/canceling, remove the underlying API-level permission (e.g. amend/renew/cancel asset permission sets) — not just the button or component from the page layout. Hiding a component visually doesn't block the backend action if the permission is still granted."},
+
+ {cat:"Billing", term:"Billing Batch Scheduler", def:"Object defining which billing schedules feed a given invoice run — recommended for high-volume invoice generation."},
+ {cat:"Billing", term:"Billing Schedule / Billing Schedule Group", def:"Generated from an activated order; represents when and how much to bill over time."},
+ {cat:"Billing", term:"Invoice Preview", def:"Preview up to two billing periods across orders, quotes, accounts, or billing schedule groups, and generate a PDF before it's real."},
+ {cat:"Billing", term:"Draft → Posted", def:"Invoice status flow. Posting can be automated via flow (Post Draft Invoice) or in batch (Post Draft Invoice Batch Run); posting an invoice posts all its lines together."},
+ {cat:"Billing", term:"Credit memo auto-conversion", def:"Negative invoice lines from a price decrease or quantity-reducing amendment can auto-convert into credit memos and apply as credits."},
+ {cat:"Billing", term:"Write-off", def:"For uncollectible invoices; automatically creates and applies credit memos for the accounting adjustment."},
+
+ {cat:"DRO", term:"Dynamic Revenue Orchestrator (DRO)", def:"Native order fulfillment engine governing everything between order submission and fulfillment."},
+ {cat:"DRO", term:"Commercial Product vs. Technical Product", def:"Commercial = what sales sells (bundled, customer-facing). Technical = what operations fulfills (granular tasks like picking, provisioning, shipping)."},
+ {cat:"DRO", term:"Decomposition", def:"Breaking a commercial order into fulfillment orders/lines via decomposition rules when the order is activated."},
+ {cat:"DRO", term:"Fulfillment Plan vs. Product Fulfillment Scenario", def:"A Fulfillment Plan is the actual tracked execution (stages, tasks, SLAs). A Product Fulfillment Scenario is the reusable template assigned to products."},
+ {cat:"DRO", term:"In-Flight Order Changes", def:"Add/remove products or adjust an order already in fulfillment, without cancel-and-rebill. Requires Place Supplemental Orders permission + In-Flight Amendments setting. Original order becomes Superseded."},
+ {cat:"DRO", term:"The assetization boundary", def:"In-flight order changes only work if NO assets have been created from the order yet. Once assetized, use the standard amendment path instead."},
+
+ {cat:"Permissions", term:"PSL vs. Permission Set", def:"A Permission Set License unlocks a feature category org-wide (entitlement layer). A Permission Set grants specific object/feature access to a user (grant layer). Both are needed, PSL first."},
+ {cat:"Permissions", term:"Browse Catalog — 3 required permission sets", def:"ProductImportApi + Product Catalog Management Viewer + Submit Transactions and Fulfillment User + (Product Discovery User for the button itself)."},
+ {cat:"Permissions", term:"Product Discovery User", def:"Needed for a user to actually browse/select products at runtime — distinct from designer/builder permission sets like Product Configuration Rules Designer."},
+ {cat:"Permissions", term:"Design Time vs. Run Time", def:"Recurring pattern across Pricing and Context Service PSLs — admins building logic need Design Time; reps/users executing it need Run Time."},
+
+ {cat:"Approvals", term:"Advanced Approvals", def:"Built on Flow Orchestration (not classic Approval Process); can trigger for any object, not just standard scenarios."},
+ {cat:"Approvals", term:"Stage vs. Step", def:"Stage = a major phase. Step = an individual action within a stage. Parallel approval = multiple Steps in ONE Stage, not multiple Stages."},
+ {cat:"Approvals", term:"Work item", def:"The individual task created for an approver when approval criteria are met."},
+ {cat:"Approvals", term:"Record locking", def:"When status flips to 'In Review', the quote locks to prevent edits mid-approval. Configurable per Approval Step whether the approver gets edit access to the record or it stays locked."},
+ {cat:"Approvals", term:"Approver Type options", def:"Each Approval Step lets you assign the approver as: User, User Resource, Group, Group Resource, Queue, or Queue Resource. A work item is created and assigned to whichever type is selected; notification type sent depends on which one it is (queues can also trigger Omni-Channel notifications)."},
+ {cat:"Approvals", term:"Static (User/Group/Queue) vs. Resource variants", def:"User/Group/Queue = a fixed, hardcoded approver picked at design time. User Resource/Group Resource/Queue Resource = a VARIABLE resolved at runtime — e.g. dynamically routing to 'the record owner's manager' instead of one named person. Manual approver selection at runtime isn't supported — the approver must be determined within the Approval Step itself."},
+ {cat:"Approvals", term:"User Resource — the username gotcha", def:"When using a User Resource to determine the approver, the variable must contain the approver's USERNAME, not the User Id — a documented, easy-to-miss requirement."},
+
+ {cat:"APIs", term:"Place Sales Transaction (PST)", def:"Consolidated API replacing the older Place Quote / Place Order APIs. Simplified persistence from Config→Persist→Price→Persist down to Config→Price→Persist (~30% faster)."},
+ {cat:"APIs", term:"Instant Pricing API", def:"Real-time pricing for the line grid/summary without necessarily committing a full transaction — distinct from PST."},
+ {cat:"APIs", term:"Create Ramp Deal — staging behavior", def:"Only stages the ramp config in a temporary, expiring context. A follow-up PST call using the returned contextId is required to actually persist it."},
+ {cat:"APIs", term:"Amend / Renew / Cancel APIs", def:"Dedicated asset-lifecycle endpoints mirroring the UI actions — distinct from PST, which is for new sales."},
+ {cat:"APIs", term:"Run Config Rules", def:"Invocable action running Hide/Disable, Message, or Recommend configuration rules; callable from Flow or the REST API."},
+ {cat:"APIs", term:"Supplemental Transaction", def:"API behind in-flight order changes — creating a supplemental order against one still in fulfillment."},
+
+ {cat:"Order Mgmt", term:"Object State Definition", def:"Defines valid states and transitions for the Order object, replacing hardcoded lifecycle stages."},
+ {cat:"Order Mgmt", term:"Object State Value naming rule", def:"Must exactly match the API name of the order Status picklist value, or lifecycle transitions break."},
+ {cat:"Order Mgmt", term:"Order Item Detail", def:"Tracks quantity/pricing breakdowns beyond the base Order Item — generated during amendments, early renewals, derived pricing, bundle reconfiguration."},
+ {cat:"Order Mgmt", term:"Order Item Attribute", def:"Stores the configuration attributes selected on a product, carried from catalog → quote → order → fulfillment."},
+ {cat:"Project Delivery", term:"Preparation activities (official)", def:"Salesforce's own pre-implementation checklist: learn the features/architecture, assemble a dedicated implementation team, investigate pain points and current priorities, solicit input from key stakeholders, define clear business objectives, and establish realistic milestones."},
+ {cat:"Project Delivery", term:"Implementation Team", def:"Salesforce publishes a dedicated guide ('Build Your Revenue Management Implementation Team') on which job roles and areas of knowledge to grow/maintain in-house — a direct match for the exam's 'assign roles and responsibilities to stakeholders' objective."},
+ {cat:"Project Delivery", term:"User Acceptance Testing (UAT)", def:"The LAST stage before go-live — done in a sandbox, AFTER the technology team has already thoroughly tested the build. Confirms the system works for real end users before launch."},
+ {cat:"Project Delivery", term:"UAT — who leads it", def:"Typically led by a Business Analyst (BA), who acts as the liaison between the business and technology (IT) teams — the BA has been involved from the first step of the project through the last, which is why they're positioned to lead UAT."},
+ {cat:"Project Delivery", term:"UAT best practices", def:"Define acceptance criteria, create test cases, select the right users to test, write test scripts based on user stories, prepare the testing environment, and track ALL feedback (bugs, change requests, and positive comments) — then prioritize what gets fixed before launch."},
+ {cat:"Project Delivery", term:"UAT vs. functional/QA testing", def:"UAT is not about finding defects the way QA testing is — it focuses on confirming the system behaves as expected in real-world business scenarios and is actually ready for real use, not just technically bug-free."},
+ {cat:"Project Delivery", term:"Preconfiguration Steps", def:"Salesforce's official documentation names a distinct 'Preconfiguration Steps' phase that must be completed BEFORE beginning Revenue Management configuration, to ensure a smooth setup — separate from, and prior to, the feature-by-feature Setup guidance."},
+ {cat:"Project Delivery", term:"Deploy Your Salesforce Technology", def:"Part of the official 'Get Implementation Ready' module in the RC exam trailmix (via the Salesforce Adoption Strategies badge). Two recurring themes: encourage usage through visible recognition of reps who use the system frequently, and gather feedback through a structured, trackable process (e.g. a survey) rather than ad hoc hallway conversations."},
+ {cat:"Project Delivery", term:"Drive Long-Term Adoption", def:"Same official badge, the 'adopt' stage after go-live. Core idea: adoption isn't a one-time launch event; it needs an ongoing, manageable, trackable feedback process, and a deliberate response plan whenever a new feature is added (not just shipping and moving on)."},
+ {cat:"Project Delivery", term:"Get Implementation Ready (module)", def:"The official trailmix module bundling all three Project Delivery sources: the 'Get Ready for Your Revenue Management Implementation' article, the Salesforce Adoption Strategies badge, and the User Acceptance Testing badge. +600 points, ~1 hour, 3 steps — confirms all of this is graded, first-party exam content."},
+ {cat:"Project Delivery", term:"Build → Test → Deploy → Adopt", def:"The exam's exact phrase for this objective. Maps cleanly to sources you now have, all confirmed official: Build/Scope (the implementation-readiness article), Test (UAT badge), Deploy and Adopt (Adoption Strategies badge) — together the fullest picture of the 14%-weight Implementation Readiness domain's delivery side."},
+ {cat:"OmniStudio", term:"The two OmniStudio layers", def:"Digital Interaction (Experience) Layer: FlexCards + OmniScripts, built on Lightning Web Components — this is what the USER sees and interacts with. Service Management Layer: Data Mappers + Integration Procedures — this is what fetches/writes DATA behind the scenes. Named explicitly on the exam alongside Context Service, BRE, and APIs."},
+ {cat:"OmniStudio", term:"FlexCard", def:"Shows contextual information and actions AT A GLANCE, in a card format, with detailed info available on demand. Example: a call center rep sees customer info and can launch a guided process from a FlexCard mid-call."},
+ {cat:"OmniStudio", term:"OmniScript", def:"Provides a GUIDED PATH through a business process — a configurable, step-by-step customer or rep experience, without complicated backend coding."},
+ {cat:"OmniStudio", term:"Data Mapper (DataRaptor)", def:"Supplies data from Salesforce to OmniScripts/FlexCards (Extract), and writes updates back to Salesforce (Load) — typically via an Integration Procedure. Takes less time to build and maintain than an equivalent Apex class."},
+ {cat:"OmniStudio", term:"Integration Procedure", def:"A declarative, SERVER-SIDE process executing multiple actions in a single server call — built with drag-and-drop elements. Called from an OmniScript, a FlexCard, an API, or even an Apex method. Best practice: use it as a FlexCard's data source, since it separates data configuration from FlexCard configuration."},
+ {cat:"OmniStudio", term:"Why Integration Procedures over Apex", def:"Server-side processing is faster than client-side. Multiple actions in ONE server call avoids slow round trips. And the Response Action trims returned data to only what's needed — a real factor on slow networks or mobile connections."},
+ {cat:"OmniStudio", term:"OmniOut", def:"Lets you use OmniScript and FlexCard Lightning web components OUTSIDE Salesforce entirely, while still getting a consistent multichannel experience — since OmniStudio auto-generates the underlying LWCs regardless of where they're deployed."},
+ {cat:"Agentforce", term:"Agentforce Quote Management — confirmed Summer '25", def:"Confirmed as part of the Summer '25 release (not a later addition) — this is the one Agentforce capability safe to expect on the exam, matching its exact wording: 'configure and generate an accurate pricing quote... including using Agentforce.' Deeper Agentforce subagent features (Consumption, Billing, Approvals) came in Winter '26/Summer '26 and are likely OUT of scope."},
+ {cat:"Agentforce", term:"What it does", def:"Reps use natural-language prompts to conversationally create, update, and manage quotes — e.g. 'Create a quote for Cloud Company' or 'Add 10 widgets to the Cloud Company quote' — without navigating forms or fields."},
+ {cat:"Agentforce", term:"Where reps use it", def:"Reps open an Account, Opportunity, or Quote record in Revenue Cloud, click the Agentforce icon, and chat their request. Agentforce confirms details if needed, creates/updates the quote, and lets the rep review and adjust before finalizing."},
+ {cat:"Agentforce", term:"Activation (admin side)", def:"An admin adds the 'Quote Management' topic to the agent. Broader setup pattern: turn on Einstein → enable Agentforce → clone the packaged flows → register them as Agentforce actions → create the Quote Management topic → add helper actions → test and iterate in sandbox."},
+ {cat:"Agentforce", term:"Discount guardrails", def:"The underlying action (e.g. 'Apply Discount to Quote Line Item') can reference discount-policy guardrails before executing — so natural-language discounting isn't unconstrained; it still respects configured pricing/discount rules."},
+ {cat:"Reporting", term:"Native reporting tools", def:"The exam objective is specifically: 'design context-aware dashboards and KPIs using native Salesforce reporting tools' — this points to standard Salesforce Reports & Dashboards, NOT a separate BI product like CRM Analytics/Tableau."},
+ {cat:"Reporting", term:"What to report on", def:"Standard Revenue Cloud objects are the reportable surface: Quote, Quote Line Item, Order, Order Product, Asset, Asset Action, Asset State Period, Invoice, Invoice Line, Billing Schedule."},
+ {cat:"Reporting", term:"Standard vs. Dynamic Dashboards", def:"A standard dashboard shows the same view to everyone. A dynamic dashboard is personalized per viewer based on their role/permissions — relevant when different sales roles should see different slices of the same underlying Revenue Cloud data."},
+ {cat:"Reporting", term:"Revenue Management Intelligence (caution)", def:"Salesforce's official docs describe a prebuilt analytics product with named dashboards (Billing Analytics, Pricing Analytics, Order Management Analytics, Subscription & Revenue Lifecycle Analytics) — but it depends on Data 360, terminology that points to a later release than Summer '25. Treat this as likely OUT of exam scope, and don't confuse it with the 'native reporting tools' objective, which is just standard Reports/Dashboards."},
+ {cat:"Catalog Mgmt", term:"Product Selling Model (PSM) — what 'subscription' means", def:"'Subscription' isn't its own category — it's the umbrella term for two of the three Product Selling Models: One-Time (no recurrence), Term-Defined (a subscription with a fixed start/end date), and Evergreen (a subscription that recurs until cancelled, no preset end date). A single product can carry multiple PSMs at once — the model is chosen at the point of sale, not fixed on the product record."},
+ {cat:"Catalog Mgmt", term:"Price Book", def:"Your company's master product catalog: a complete list of products/services with their specific selling prices. Every org includes a predefined Standard Price Book; you can also create custom price books for different currencies, regions, or customer segments. All products in a bundle must belong to the SAME price book for pricing to work correctly."},
+ {cat:"Catalog Mgmt", term:"Price Book Entry", def:"The record of a product/service and its list price WITHIN a specific price book — one product can have different Price Book Entries (different prices) across different price books. Important: you can't change a product's Product Selling Model after it's been associated with a Price Book Entry."},
+ {cat:"Catalog Mgmt", term:"Cost Book / Cost Book Entry", def:"A parallel structure to Price Book/Price Book Entry, but for COST instead of selling price. A Cost Book can be referenced by multiple Price Books — the idea being a product may have many price points (many Price Book Entries) but just ONE underlying cost. Cost Book Entry values feed Quote Line Item cost/margin fields and formulas."},
+ {cat:"Catalog Mgmt", term:"Standard Price Book", def:"The one price book every org gets by default. Referenced directly in the manual Revenue Cloud activation sequence ('Activate the Standard Price Book' — the final setup step) and required before most quoting/ordering flows will work."},
+];
+
+const CONCEPT_CATEGORIES = CATEGORIES;
+
+const CONCEPTS = [
+ {cat:"Order Mgmt", title:"The Quote-to-Cash Spine", body:`
+   <p>Everything in Revenue Cloud sits somewhere on one spine: <strong>Quote → Order → Asset → Invoice</strong>, with Contracts and DRO branching off at specific points.</p>
+   <ul>
+     <li>A <strong>Quote</strong> holds Quote Line Items — what's being proposed.</li>
+     <li>Activating produces an <strong>Order</strong> with Order Products, carrying pricing and config forward unchanged.</li>
+     <li>Activating the order creates an <strong>Asset</strong> — what the customer now owns.</li>
+     <li>The asset's <strong>Billing Schedule</strong> drives <strong>Invoices</strong> and Invoice Lines.</li>
+   </ul>
+   <p>A <strong>Contract</strong> can be generated from the quote at any point and carries Contracted Pricing forward into later transactions. <strong>DRO</strong> governs fulfillment strictly between order activation and assetization — once an asset exists, amend/renew/cancel take over instead.</p>`},
+
+ {cat:"Assets", title:"The Asset Object Family", body:`
+   <p>Three objects work together to track an asset over time:</p>
+   <ul>
+     <li><strong>Asset</strong> — the core record: what the customer owns right now.</li>
+     <li><strong>Asset Action (AA)</strong> — the audit trail. One is created for every amendment, renewal, and cancellation, tagged with a business category (Upsells, Renewals, Cancellations).</li>
+     <li><strong>Asset State Period (ASP)</strong> — a span of time where quantity, amount, and MRR all stayed the same. A new ASP is created whenever any of those three changes. Cancellation does NOT create a new ASP, since there's no next period to represent.</li>
+   </ul>
+   <p>Think of it as: <strong>Asset</strong> = the thing, <strong>Asset Action</strong> = what happened to it, <strong>Asset State Period</strong> = what it looked like during each stretch of time.</p>`},
+
+ {cat:"Order Mgmt", title:"The Order Object Family", body:`
+   <p>Beyond the base Order and Order Item, three supporting objects capture detail that doesn't fit on the line item itself:</p>
+   <ul>
+     <li><strong>Order Item Detail</strong> — quantity/pricing breakdowns generated during amendments, early renewals, derived pricing, or bundle reconfiguration.</li>
+     <li><strong>Order Item Relationship</strong> — parent-child links between order products, used for bundles.</li>
+     <li><strong>Order Item Attribute</strong> — the configuration values selected on the product (size, tier, region), carried from catalog → quote → order → fulfillment.</li>
+   </ul>
+   <p>Order lifecycle stages themselves aren't hardcoded — they're configured through an <strong>Object State Definition</strong>, with <strong>Object State Values</strong> (the stages) and <strong>Object State Transitions</strong> (which moves are valid). The Object State Value names must exactly match the order Status picklist's API names, or transitions silently break.</p>`},
+
+ {cat:"Context Service", title:"The Context Service Object Family", body:`
+   <p>Context Service is a translation layer between real Salesforce data and the processes that consume it (pricing, qualification, DRO, billing):</p>
+   <ul>
+     <li><strong>Context Definition</strong> — the logical model as a whole.</li>
+     <li><strong>Node</strong> — one logical entity inside it, like Account or Quote, which can have parent-child relationships mirroring real object relationships.</li>
+     <li><strong>Attribute</strong> — a field within a node, mapped to a real field.</li>
+     <li><strong>Context Tag</strong> — a short alias a process references instead of the raw field name.</li>
+     <li><strong>Context Mapping</strong> — the configuration connecting logical nodes/attributes to real source objects/fields, with a Mapping Intent (Hydration, Persistence, Association, Translation) defining how.</li>
+   </ul>
+   <p>Standard definitions — ProductDiscoveryContext, SalesTransactionContext, RateManagementContext — can be extended (inherits + auto-syncs) or cloned (independent snapshot, no sync).</p>`},
+
+ {cat:"Pricing/BRE", title:"The Pricing / BRE Object Family", body:`
+   <p>Pricing procedures don't calculate prices directly — they orchestrate a chain of BRE objects:</p>
+   <ul>
+     <li><strong>Decision Table</strong> — the lookup: conditions in, outputs out. Sourced from a custom object or CSV; must be activated and refreshed when source data changes.</li>
+     <li><strong>Expression Set</strong> — the logic layer underlying pricing procedures and qualification rule procedures; references a Context Definition for its list variables.</li>
+     <li><strong>Price Adjustment Schedule + Tiers</strong> — simple volume/tier discounts.</li>
+     <li><strong>Price Adjustment Matrix</strong> — multi-criteria discounts, backed by a decision table.</li>
+     <li><strong>Discount Distribution Service</strong> — spreads one header-level discount across lines.</li>
+   </ul>
+   <p>Apex hooks (prehook/posthook) plug into this chain too, but only as the first or last element in the sequence for the Revenue Management process type.</p>`},
+
+ {cat:"Billing", title:"The Billing Object Family", body:`
+   <p>Billing has its own object chain running parallel to the sales side:</p>
+   <ul>
+     <li><strong>Legal Entity, Billing Policy, Tax Policy</strong> — foundational setup defining who's billing, under what rules.</li>
+     <li><strong>Billing Schedule / Billing Schedule Group</strong> — generated from an activated order; the "when and how much" layer.</li>
+     <li><strong>Billing Batch Scheduler</strong> — defines which billing schedules feed a given invoice run.</li>
+     <li><strong>Invoice / Invoice Line</strong> — the actual bill, moving Draft → Posted.</li>
+     <li><strong>Credit Memo</strong> — auto-generated from negative invoice lines (price decreases, quantity-reducing amendments) or write-offs.</li>
+   </ul>
+   <p>The order is the source of truth; billing schedules translate it into a timeline, and invoices are generated off that timeline — never directly off the order.</p>`},
+
+ {cat:"Catalog Mgmt", title:"The Product Catalog Object Family", body:`
+   <p>Product configuration builds up through a specific hierarchy, each layer feeding the next:</p>
+   <ul>
+     <li><strong>Attribute Picklist</strong> → values, built first.</li>
+     <li><strong>Attribute</strong> → data type, linked picklist, Is Price Impacting flag.</li>
+     <li><strong>Attribute Category</strong> → groups related attributes for the page.</li>
+     <li><strong>Product Classification</strong> → a template; attributes are assigned here.</li>
+     <li><strong>Product (Product2)</strong> → built "based on" a classification, inheriting its attributes.</li>
+   </ul>
+   <p>Separately, <strong>Product Category</strong> and <strong>Catalog</strong> handle organization and browsing — a product can sit in multiple categories, and a catalog can be tied to a specific Sales Channel.</p>`},
+
+ {cat:"OmniStudio", title:"OmniStudio: The Data Flow Pattern", body:`
+   <p>The canonical OmniStudio flow, worth having as a single mental picture:</p>
+   <p style="font-family:Georgia,serif; color:var(--text); background:var(--surface-2); padding:12px; border-radius:8px;">User → FlexCard / OmniScript → Integration Procedure → Data Mapper (DataRaptor) → Salesforce object or external API</p>
+   <p>UI stays decoupled from data logic on purpose: a FlexCard or OmniScript never talks to Salesforce data directly — it calls an Integration Procedure, which orchestrates one or more Data Mapper Extract/Load calls in a single server round trip. Change the display, and the data layer underneath doesn't need to change at all.</p>
+   <ul>
+     <li><strong>Need a guided, step-by-step process?</strong> → OmniScript.</li>
+     <li><strong>Need an at-a-glance summary with quick actions?</strong> → FlexCard.</li>
+     <li><strong>Need to read/write Salesforce data with minimal round trips?</strong> → Integration Procedure calling Data Mapper(s).</li>
+     <li><strong>Need the same experience to work outside Salesforce entirely?</strong> → OmniOut.</li>
+   </ul>
+   <p>A common exam trap: treating OmniScript and Flow as interchangeable. OmniScript is about guiding a USER through a process with a UI; Flow is backend automation with no guided interface. If a scenario describes a customer-facing, step-by-step wizard, that's OmniScript — not Flow.</p>`},
+
+ {cat:"Context Service", title:"How Context Service, OmniStudio, and BRE Fit Together", body:`
+   <p>These three are named together in the same exam objective, and it's worth seeing why: they're the three layers most Revenue Cloud extensibility is built on, each doing a different job.</p>
+   <ul>
+     <li><strong>Context Service</strong> is the data layer — it abstracts real Salesforce objects (Quote, Order, Account) into a logical model (nodes, attributes, tags) that other engines can read and write without hardcoding to a specific object.</li>
+     <li><strong>Business Rules Engine (BRE)</strong> is the decision layer — decision tables, expression sets, and qualification/pricing procedures all consume Context Service's tags as their inputs and outputs.</li>
+     <li><strong>OmniStudio</strong> is the presentation/orchestration layer — FlexCards and OmniScripts give the user something to look at and interact with, while Integration Procedures and Data Mappers move data in and out, often calling the same context-mapped fields underneath.</li>
+   </ul>
+   <p>A useful mental model: Context Service defines <em>what data exists and where it comes from</em>; BRE defines <em>what decision gets made with that data</em>; OmniStudio defines <em>how a human sees and acts on it</em>. A single feature (like guided selling with dynamic pricing) typically touches all three.</p>`},
+
+ {cat:"Catalog Management", title:"Product Selling Model, Bundles, and Cardinality — One Picture", body:`
+   <p>Three concepts that get tested separately but work together on one product record:</p>
+   <ul>
+     <li><strong>Product Selling Model (PSM)</strong> answers "how is this sold?" — One-Time, Term-Defined, or Evergreen. A single product can carry multiple PSMs.</li>
+     <li><strong>Price Book / Price Book Entry</strong> answers "what does it cost?" — and a PSM can't be changed once tied to a Price Book Entry, which is why PSM decisions happen early.</li>
+     <li><strong>Bundle structure, Local Cardinality, and Group Cardinality</strong> answer "what does it come with, and how much of it?" — a product can be a bundle component with its own required/default/quantity rules (Local Cardinality), sitting inside a group with its own separate min/max rules (Group Cardinality).</li>
+   </ul>
+   <p>Put together: when a customer buys a bundle, the PSM determines the billing shape, the Price Book Entry determines the price, and Local + Group Cardinality determine what's actually allowed in the cart — three independent rule sets converging on one quote line.</p>`},
+
+ {cat:"Advanced Configurator", title:"Choosing Standard vs. Advanced Configurator", body:`
+   <p>A decision framework, not just a definitions pair:</p>
+   <ul>
+     <li><strong>Pick Standard (BRE-based)</strong> when logic is simple and sequential, the org is already on it, and there's no real need for two-way dependency resolution.</li>
+     <li><strong>Pick Advanced (CML-based)</strong> when the catalog is large or deeply nested, attributes interact with each other, or you need the engine to auto-resolve conflicts rather than making the rule designer chase every combination by hand.</li>
+   </ul>
+   <p>Since Advanced is the default engine for new orgs and Standard is in maintenance mode, the exam is more likely to test "recognize which engine a described scenario needs" than "build a Standard Configurator rule from scratch."</p>`},
+
+ {cat:"Pricing/BRE", title:"Pricing Procedure Execution Order", body:`
+   <p>A pricing procedure is an ORDERED stack of elements, and order genuinely changes the result:</p>
+   <ol style="padding-left:20px; color:var(--text-dim); font-size:14.5px; line-height:1.6;">
+     <li>Pricing Setting (establishes base input/output variables)</li>
+     <li>List Price (fetches the base price from a Price Book Entry via a decision table)</li>
+     <li>Adjustments (Price Adjustment Schedule/Matrix, Attribute-Based, Bundle-Based)</li>
+     <li>Aggregate/Rollup elements (if grouping or summarizing across lines)</li>
+     <li>Apex hooks (only valid as the FIRST or LAST element for the Revenue Management process type)</li>
+   </ol>
+   <p>Because each element can read the output of the one before it, a misordered procedure is a common real-world (and exam-scenario) bug: an adjustment referencing a variable that hasn't been calculated yet simply returns nothing.</p>`},
+
+ {cat:"Contracts", title:"Quote → Contract → Order, and Where DRO Fits", body:`
+   <p>These three don't happen strictly in sequence — a Contract can branch off a Quote at almost any point, not just at the end:</p>
+   <ul>
+     <li>A <strong>Contract</strong> can be generated from a Quote once terms are agreed, carrying Contracted Pricing forward — this can happen before or instead of immediately creating an Order.</li>
+     <li>An <strong>Order</strong> is created when the Quote is activated, carrying pricing/config forward unchanged.</li>
+     <li><strong>DRO</strong> takes over the moment the Order is activated, decomposing it into fulfillment components — but only until an Asset is created. After that, DRO's in-flight changes are no longer available, and amend/renew/cancel take over instead.</li>
+   </ul>
+   <p>The exam-relevant boundary to remember: DRO governs the space between Order activation and Asset creation. Everything before that is Quote/Contract/Order mechanics; everything after is Asset Management.</p>`},
+
+ {cat:"Assets", title:"The Amend/Renew/Cancel Decision Tree", body:`
+   <p>A quick framework for which action applies to a described scenario:</p>
+   <ul>
+     <li><strong>Amend</strong> — the customer's existing subscription changes shape (quantity, config, price) but continues. Creates a new Asset Action and a new Asset State Period.</li>
+     <li><strong>Renew</strong> — the term is extending, either Automatically or with an Override Renewal Term. Also creates a new ASP; contracted pricing/lot-based pricing can carry forward.</li>
+     <li><strong>Cancel</strong> — the subscription ends. Creates an Asset Action (for the audit trail) but NOT a new ASP, since there's no next period to represent.</li>
+   </ul>
+   <p>The gate before any of these can run: the asset must have been created through standard order activation. A migrated or manually-created asset fails all three until a new order re-establishes it properly.</p>`},
+
+ {cat:"Billing", title:"Order → Billing Schedule → Invoice, End to End", body:`
+   <p>Invoicing never reads directly off the Order — there's always a translation step in between:</p>
+   <ol style="padding-left:20px; color:var(--text-dim); font-size:14.5px; line-height:1.6;">
+     <li><strong>Order</strong> is activated, becoming the source of truth for what was sold.</li>
+     <li><strong>Billing Schedule / Billing Schedule Group</strong> is generated from the order — this is the "when and how much" timeline layer.</li>
+     <li>A <strong>Billing Batch Scheduler</strong> (or an on-demand/manual trigger) determines which billing schedules feed a given invoice run.</li>
+     <li><strong>Invoices</strong> generate from the billing schedule, moving Draft → Posted.</li>
+     <li>Amendments/cancellations ripple back through as <strong>Credit Memos</strong>, applied automatically against affected invoices.</li>
+   </ol>
+   <p>This is why a scenario like "the order changed but the invoice is wrong" almost always traces back to the Billing Schedule not having regenerated — not the Order itself, and not the Invoice object directly.</p>`},
+
+ {cat:"Permissions", title:"Where Toggles Live", body:`
+   <p>Nearly every advanced Revenue Cloud feature is gated behind a setting in <strong>Setup → Revenue Settings</strong> (sometimes labeled Revenue Lifecycle Management Settings). This is the first place to check whenever a feature "isn't showing up" — before assuming it's a permission or data problem.</p>
+   <p>The general implementation sequence is consistent across almost every feature covered in this app:</p>
+   <ol style="padding-left:20px; color:var(--text-dim); font-size:14.5px; line-height:1.6;">
+     <li>Enable the setting in Revenue Settings</li>
+     <li>Assign the relevant Permission Set License(s)</li>
+     <li>Assign the relevant Permission Set(s)</li>
+     <li>Update page layouts / Lightning pages</li>
+     <li>Sync or refresh the underlying data</li>
+   </ol>`},
+
+ {cat:"Advanced Configurator", title:"Advanced Configurator Setup Sequence", body:`
+   <p>This is a precise, multi-step sequence — worth knowing in order rather than as a single "toggle":</p>
+   <ol style="padding-left:20px; color:var(--text-dim); font-size:14.5px; line-height:1.6;">
+     <li><strong>Add tracking fields.</strong> Create <strong>ConstraintEngineNodeStatus</strong> (Text Area, 5000) on Quote Line Item, Order Product, and Asset Action Source. Read/write, kept OFF page layouts.</li>
+     <li><strong>Extend &amp; map context.</strong> In your extended SalesTransactionContext: add ConstraintEngineNodeStatus (INPUTOUTPUT, STRING) to the SalesTransactionItem node, and add a second field, AssetConstraintEngineNodeStatus (INPUTOUTPUT, STRING), to the AssetActionSource node. Map both to the new fields in the Quote, Order &amp; Asset mappings, and confirm the TransactionType mapping. Activate.</li>
+     <li><strong>Deploy a trigger.</strong> A QuoteLineItem before-insert trigger copies the latest status from related AssetActionSource records.</li>
+     <li><strong>Enable the engine.</strong> Setup → Revenue Settings → Set Up Advanced Configuration Rules and Constraints. This specific setting makes Advanced Configurator the default engine.</li>
+   </ol>
+   <p>Only after all four steps are rule designers able to build constraints, and reps able to run validations on quotes and orders.</p>`},
+ {cat:"Pricing/BRE", title:"Other Pricing & Configuration Toggles", body:`
+   <ul>
+     <li><strong>Procedure Plan Orchestration for Pricing</strong> — required for Apex prehooks/posthooks to run in a pricing procedure.</li>
+     <li><strong>Exclude Default and Sales Transaction Type Pricing Procedures</strong> — paired with the above to enable custom hook behavior.</li>
+   </ul>
+   <p>Forgetting either of these is the classic reason a correctly-written Apex hook class never actually fires.</p>`},
+
+ {cat:"Catalog Mgmt", title:"Catalog & Discovery Toggles", body:`
+   <ul>
+     <li><strong>Use Indexed Data for Product Listing and Search</strong> — once enabled, the product index must be rebuilt whenever products or product data change, or catalog changes won't reflect in search/browse.</li>
+     <li><strong>Guided Product Selection</strong> — supports guided, wizard-style product selection experiences.</li>
+     <li><strong>Ramp Deals</strong> (for Groups) — requires the enhanced Sales Transaction Line Editor component on the Quote page, introduced alongside it.</li>
+   </ul>
+   <p>These three often get enabled together during initial catalog setup, but each has its own downstream dependency (index rebuild, line editor component) that's easy to miss.</p>`},
+
+ {cat:"DRO", title:"Order / DRO Toggles", body:`
+   <ul>
+     <li><strong>In-Flight Amendments</strong> setting — must be enabled under DRO Settings for in-flight order changes to be available at all.</li>
+     <li><strong>Place Supplemental Orders</strong> permission — required alongside the setting above; without it, a user can see the feature but can't actually submit a change.</li>
+   </ul>
+   <p>Both apply only pre-assetization. If no asset has been created yet, an in-flight change should be possible with these two enabled; if it still fails, the order has likely already been assetized and needs the standard amendment path instead.</p>`},
+
+ {cat:"Project Delivery", title:"Preparing for an Implementation", body:`
+   <p>Salesforce's own implementation guide ("Get Ready for Your Revenue Management Implementation") frames readiness as a set of activities to complete BEFORE any configuration begins:</p>
+   <ul>
+     <li>Learn the features and technical architecture</li>
+     <li>Assemble a dedicated implementation team</li>
+     <li>Investigate pain points and assess current priorities</li>
+     <li>Solicit input from key stakeholders</li>
+     <li>Define clear business objectives</li>
+     <li>Establish realistic milestones to guide the project</li>
+   </ul>
+   <p>This maps directly to the exam's "assign roles and responsibilities to stakeholders" and "develop a scope of work and project plan" objectives — this is the non-technical, delivery side of Implementation Readiness, distinct from the toggles/PSL material in the other cards here.</p>`},
+
+ {cat:"Project Delivery", title:"User Acceptance Testing (UAT)", body:`
+   <p>UAT is the LAST stage before go-live — it happens in a sandbox, after the technology team has already thoroughly tested the build. It's the direct match for the exam's "drive implementation through build, test, deployment, and adoption" objective.</p>
+   <p><strong>Who leads it:</strong> typically a Business Analyst (BA), who has been the liaison between business and technology teams from the very first step of the project — which is exactly why they're positioned to lead this final step too.</p>
+   <p><strong>What UAT is actually checking:</strong> not defects (that's QA/functional testing's job) — UAT confirms the system behaves as expected in REAL-WORLD business scenarios and is genuinely ready for real users.</p>
+   <p><strong>Best practices:</strong> define acceptance criteria, create test cases, select the right users, write test scripts based on user stories, prepare the testing environment, and track every piece of feedback — bugs, change requests, and positive comments alike — then prioritize what actually needs fixing before launch.</p>`},
+
+ {cat:"Permissions", title:"Licenses to Plan For (PSLs)", body:`
+   <p>Before any permission set can be assigned, the underlying Permission Set License has to exist and be assigned at the org/user level. Plan for these based on which modules the implementation touches:</p>
+   <ul>
+     <li><strong>Revenue Cloud User</strong> — foundational, almost always needed.</li>
+     <li><strong>Product Configuration</strong> (Design, Discovery) — catalog and configuration work.</li>
+     <li><strong>Rate Management / Usage Management / Wallet Management</strong> — only if usage-based pricing or wallets are in scope.</li>
+     <li><strong>Tax (Admin, Config)</strong> — if tax calculation is configured.</li>
+     <li><strong>Contract Lifecycle Management User</strong> — if Salesforce Contracts is in scope.</li>
+     <li><strong>Salesforce Pricing Design Time / Run Time User</strong> and <strong>Context Service Admin / Runtime</strong> — the recurring build-vs-execute split.</li>
+   </ul>
+   <p>Assign only what's actually needed — over-assigning PSLs adds confusion without adding capability.</p>`},
+];
+
+const QUIZ = [
+ {cat:"Context Service", q:"A pricing procedure needs to read a custom field from the Quote into its cache for a calculation. Which Mapping Intent is required?", opts:["Association","Hydration","Persistence","Translation"], correct:1, exp:"Hydration is the 'read from source into cache' direction."},
+ {cat:"Pricing/BRE", q:"A discount decision table has new rows added to its source object. Quotes still show old discounts. Most likely fix?", opts:["Reactivate the pricing procedure","Refresh the decision table","Sync Pricing Data","Extend the context definition"], correct:1, exp:"Source-data changes require a decision table refresh — the classic troubleshooting answer."},
+ {cat:"Advanced Configurator", q:"Fundamental difference between Standard and Advanced Configurator?", opts:["Standard uses CML; Advanced uses sequential rules","Standard is constraint-based; Advanced is rule-based","Standard applies rules sequentially; Advanced uses a constraint-based solver resolving dependencies both ways","No functional difference, only UI"], correct:2, exp:"Standard = sequential BRE rules. Advanced = two-way constraint solving via CML."},
+ {cat:"Pricing/BRE", q:"A picklist attribute is assigned to a classification, but changing its value has no price effect. Most likely missing step?", opts:["Picklist wasn't marked Active","Is Price Impacting flag wasn't set true","Product wasn't added to a category","Quote wasn't qualified"], correct:1, exp:"Is Price Impacting must be true, plus a Price Adjustment Schedule entry and a pricing data sync."},
+ {cat:"Qualification", q:"A product should be available to everyone except government accounts. Best approach?", opts:["Qualification rule matching all segments except government","Disqualification rule matching the government segment","A context definition with no mapping","A pricing procedure element"], correct:1, exp:"Broadly available, narrowed by an exception, is the classic disqualification-rule pattern."},
+ {cat:"Contracts", q:"Reps should only use pre-approved contract language rather than drafting from scratch. Which capability?", opts:["Redlining","Document reconciliation","Clause library","Version management"], correct:2, exp:"Clause library holds reusable, pre-approved legal language."},
+ {cat:"Assets", q:"A migrated asset throws an error when a rep tries to amend it. Most likely cause?", opts:["Missing Product Classification","Not created through standard order activation, so it lacks required data relationships","Missing Product Configurator permission set","Pricing procedure not activated"], correct:1, exp:"Amend/renew/cancel require the asset to trace back through standard order activation."},
+ {cat:"Billing", q:"An order is amended to reduce quantity after the invoice posted. What typically reconciles the balance?", opts:["Editing the original invoice directly","A credit memo is auto-created and applied","A new legal entity is created","The invoice is voided and manually recreated"], correct:1, exp:"Quantity/price-reducing amendments auto-generate and apply credit memos."},
+ {cat:"DRO", q:"Adding a product to an order already mid-fulfillment, without cancel-and-rebill — what condition must hold?", opts:["The order must already be assetized","The order must NOT yet be assetized","The order must be in Draft status","Customer must be on a subscription model"], correct:1, exp:"In-flight order changes only work pre-assetization; post-assetization, use standard amendments."},
+ {cat:"Permissions", q:"A user can't see Browse Catalog (PSL already assigned). Likely missing permission sets?", opts:["Product Configuration Rules Designer only","Advanced Configurator Designer only","Product Discovery User + Product Catalog Mgmt Viewer + Submit Transactions and Fulfillment User","Context Service Admin only"], correct:2, exp:"Designer/builder permission sets are for building rules, not for a user to browse/select products."},
+ {cat:"Order Mgmt", q:"Object State Values are configured but orders won't transition between stages. Likely cause?", opts:["Object State Definition not linked to Asset","Object State Value names don't exactly match order Status picklist API names","DRO wasn't enabled","Order wasn't decomposed"], correct:1, exp:"Object State Value names must exactly match the picklist API names, or data integrity breaks."},
+ {cat:"APIs", q:"Relationship between Place Quote/Place Order and Place Sales Transaction (PST)?", opts:["Unrelated APIs for different objects","Place Quote/Order are newer than PST","PST consolidated both into one API, reducing persistence from two steps to one","PST only works for orders, never quotes"], correct:2, exp:"PST replaced the legacy pair and simplified Config→Persist→Price→Persist to Config→Price→Persist."},
+ {cat:"Context Service", q:"A mapping needs to reshape cached data into a different format, with no new fetch or write. Which intent?", opts:["Hydration","Persistence","Association","Translation"], correct:3, exp:"Translation reshapes data already in the cache."},
+ {cat:"Pricing/BRE", q:"An ADVANCED decision table stores a Currency field (scale 16,2), DB value 42.9999. What does it return?", opts:["43.00","42.99","42.9999, unrounded","An error"], correct:2, exp:"Advanced tables return the exact stored value, ignoring the field's declared scale — unlike standard tables, which round."},
+ {cat:"Advanced Configurator", q:"Before building constraint models, what hidden field(s) must exist, and where?", opts:["A checkbox IsConstrained on Product2 only","A Text Area (5000) ConstraintEngineNodeStatus on Quote Line Item, Order Product, and Asset Action Source","A currency field ConstraintCost on Quote Line Item only","A lookup to the Constraint Model object on Account"], correct:1, exp:"ConstraintEngineNodeStatus (Text Area 5000, read/write, off page layouts) is required on all three objects — Quote Line Item, Order Product, and Asset Action Source — plus a second field, AssetConstraintEngineNodeStatus, mapped to the AssetActionSource context node."},
+ {cat:"Advanced Configurator", q:"A rule should enforce a constraint only under certain conditions, not always. Which constraint type fits?", opts:["Basic Logic Constraint","Conditional Logic Constraint","Dynamic Message Rule","Require Rule"], correct:1, exp:"Basic Logic Constraint is unconditional (always true). Conditional Logic Constraint is the conditional counterpart."},
+ {cat:"Pricing/BRE", q:"In a Revenue Management process-type pricing procedure, where must an Apex hook sit in the sequence?", opts:["Anywhere after Qualification","Only first or last in the sequence","Immediately before any Decision Table element","Apex hooks aren't allowed with this process type"], correct:1, exp:"Apex must be first or last in the Procedure Plan sequence for this process type."},
+ {cat:"Qualification", q:"An EvaluateDisqualification element is mistakenly pointed at a qualification-type table. What happens?", opts:["Auto-detected and corrected","Procedure throws an error — types must match","Element silently ignored","Procedure defaults to qualifying all products"], correct:1, exp:"Elements must reference the matching decision-table type or the procedure errors."},
+ {cat:"Contracts", q:"A customer edits contract terms in an offline Word doc instead of the online redlining tool. Which capability brings those changes back in?", opts:["Clause library","Document reconciliation","Version management","Approval workflow routing"], correct:1, exp:"Document reconciliation syncs offline Word edits back into Salesforce — distinct from version management."},
+ {cat:"Assets", q:"Which statement about Asset State Periods (ASPs) is most accurate?", opts:["Every asset has exactly one ASP for its lifecycle","An ASP is a span where quantity/amount/MRR stay the same; a new one forms when any changes","ASPs are only created for cancellations","ASPs are manually created by the rep"], correct:1, exp:"ASP = a stable span of quantity/amount/MRR. Cancellations do NOT create a new ASP (no next period)."},
+ {cat:"Billing", q:"Which object defines which billing schedules are included in a given large-volume invoice run?", opts:["Invoice Scheduler","Billing Batch Scheduler","Billing Policy","Accounting Period"], correct:1, exp:"Billing Batch Scheduler is the precise object name — a common naming trap."},
+ {cat:"DRO", q:"Relationship between a commercial Order Item and what operations fulfills?", opts:["Operations fulfills the same Order Item records directly","Order Items decompose into Fulfillment Order Items representing technical tasks","Fulfillment Order Items exist before the order is placed","DRO only applies to subscriptions"], correct:1, exp:"Decomposition breaks commercial products into technical fulfillment components."},
+ {cat:"Permissions", q:"User has Salesforce Pricing Run Time User but still can't execute pricing. Most likely missing piece?", opts:["A matching Permission Set License hasn't been assigned","Needs System Administrator profile","Run Time doesn't apply to quotes","Pricing procedure needs cloning"], correct:0, exp:"PSL (entitlement) and Permission Set (grant) are both required — PSL first."},
+ {cat:"Approvals", q:"Pricing Manager, Pricing Analyst, and CEO must all review a quote SIMULTANEOUSLY. How is this configured?", opts:["Three separate Stages, one per approver","Multiple Steps within the same Stage","A Decision element with three outcomes","Parallel review isn't supported"], correct:1, exp:"Parallel approval = multiple Steps inside one Stage, not multiple Stages (which implies sequence)."},
+ {cat:"APIs", q:"Create Ramp Deal API succeeds, but segments were never saved to the database. Why?", opts:["The call failed silently — retry identically","It only stages in a temporary context; a follow-up PST call with the returned contextId is required to commit","Ramp deals can't be created via API","Missing Rate Management PSL"], correct:1, exp:"Create Ramp Deal stages only. Persisting requires a second PST call using the returned contextId."},
+];
+
+/* ---------------- STATE ---------------- */
+let view = "cards";
+let activeCat = "All";
+let cardIdx = 0;
+let flipped = false;
+let starred = {};
+let checklistState = {};
+let quizPool = [];
+let quizIdx = 0;
+let quizScore = 0;
+let quizAnswered = false;
+let conceptCat = "All";
+let conceptIdx = 0;
+let checklistIdx = 0;
+let checklistCat = "All";
+
+const CHECKLISTS = [
+ {id:"platform", title:"Platform Concepts", weight:"18%", sections:[
+   {name:"Context Service", items:[
+     "Create a custom context definition from scratch",
+     "Extend a standard definition and add one custom node/attribute",
+     "Clone that same standard definition; confirm Sync is unavailable on the clone",
+     "Build a mapping with Hydration only, then rebuild with Hydration + Translation",
+     "Trigger hydration via UI, then via Apex/Flow; confirm the auto-sync gap",
+     "Reference tags as list variables in an expression set; try deactivating and confirm it's blocked",
+     "Build a cross-context mapping carrying a custom field from Product (via Product Discovery Context) to Quote Line Item (via Sales Transaction Context)"]},
+   {name:"APIs", items:[
+     "Call PST directly to create then update a quote",
+     "Call Instant Pricing API; compare to a full PST call",
+     "Call Create Ramp Deal; confirm nothing persists until PST follow-up",
+     "Call Amend/Renew/Cancel APIs directly, outside the UI",
+     "Trigger a decision table refresh via invocable action",
+     "Call Run Config Rules; test Hide/Disable, Message, Recommend"]},
+   {name:"Foundational Setup & Permissions", items:[
+     "Assign Revenue Cloud User PSL; confirm baseline access",
+     "Assign the 3 Browse Catalog permission sets together",
+     "Remove Product Discovery User; confirm Browse Catalog breaks",
+     "Add Sales Transaction Line Editor to a Quote page; configure columns",
+     "Add Asset Viewer to an Account page",
+     "Compare Pricing Design Time User vs. Run Time User access"]},
+   {name:"Objects & Relationships", items:[
+     "Trace one quote through to invoice, noting the exact object created at each step",
+     "On one test asset, inspect its related Asset Action and Asset State Period records directly",
+     "On an order with a bundle, inspect Order Item Detail, Order Item Relationship, and Order Item Attribute",
+     "Build a Context Definition and identify its Node, Attribute, Context Tag, and Context Mapping pieces by hand",
+     "Open a pricing procedure and trace it back through its Expression Set to the Decision Table underneath",
+     "Inspect the Billing Schedule Group generated from one order, then the Invoice generated from it",
+     "Build one product from Attribute Picklist up through Attribute, Classification, and Product2"]},
+   {name:"Advanced Approvals", items:[
+     "Build a flow to flip Quote Status to In Review on a threshold",
+     "Confirm the quote locks once In Review",
+     "Build an Auto-Launched Approval Orchestration flow, 2+ Stages",
+     "Add multiple Steps in one Stage for parallel approval",
+     "Build supporting Approved/Rejected subflows",
+     "Test the full path: submit, approve one stage, reject another"]},
+   {name:"OmniStudio", items:[
+     "Build one FlexCard showing account/quote summary data at a glance",
+     "Build one OmniScript walking through a simple guided process (2-3 steps)",
+     "Build an Integration Procedure that reads a Salesforce record via a Data Mapper Extract",
+     "Wire the FlexCard to call that Integration Procedure as its data source, instead of a direct data source",
+     "Add a Data Mapper Load step to write a change back to Salesforce from the OmniScript",
+     "Compare the round trips: one Integration Procedure call vs. multiple direct calls, and confirm the performance difference conceptually"]}
+ ]},
+ {id:"readiness7", title:"Implementation Readiness", weight:"14%", sections:[
+   {name:"Implementation Readiness", items:[
+     "Open Revenue Settings in a fresh org and inventory every toggle before enabling anything",
+     "Enable the Advanced Configurator toggle; confirm the ConstraintEngineNodeStatus field dependency",
+     "Enable Procedure Plan Orchestration + Exclude Default settings; confirm an Apex hook actually fires",
+     "Enable Use Indexed Data for Product Listing and Search; rebuild the index; confirm a catalog change appears",
+     "Enable In-Flight Amendments and assign Place Supplemental Orders; confirm the feature becomes available",
+     "Build a full PSL + permission-set plan for one implementation scope before assigning anything",
+     "Walk the 5-step sequence (setting → PSL → permission set → page layout → sync) end to end for one feature"]},
+   {name:"Manual Revenue Cloud Activation (pre-Go)", items:[
+     "Enable Revenue Cloud, then Quotes, Orders, and Product Configurator, in that order",
+     "Assign Admin Permission Sets before touching any feature-specific settings",
+     "Turn On Context Service, then extend the Sales Transaction Context",
+     "Turn On Salesforce Pricing, then create AND select the Revenue Management Default Pricing Procedure",
+     "Extend AND select the Product Discovery Context Definition (separate from Sales Transaction Context)",
+     "Create, enable, AND select the Default Product Discovery Pricing Procedure",
+     "Create AND select the Default Salesforce Pricing Discovery Procedure (a third, distinct procedure from the two above)",
+     "Activate the Standard Price Book as the final step",
+     "Do the whole sequence once by hand, then compare it to what Salesforce Go automates in a Winter '26+ org, to see exactly which manual steps it's collapsing"]},
+   {name:"Project Delivery & UAT", items:[
+     "Draft a one-page scope of work for a hypothetical Revenue Cloud implementation (objectives, milestones, in/out of scope)",
+     "List the implementation team roles you'd staff for a mid-size project, and what each role owns",
+     "Write a stakeholder map for one implementation: who needs to approve what, and when",
+     "Draft 3 UAT acceptance criteria and matching test cases for one feature already built in your sandbox",
+     "Write a UAT test script based on a user story, not a technical spec",
+     "Practice explaining the difference between UAT and QA/functional testing out loud, in one sentence",
+     "Draft a simple feedback-tracking sheet with columns for bug vs. change request vs. positive comment, and a priority column"]}
+ ]},
+ {id:"catalog", title:"Catalog Management", weight:"16%", sections:[
+   {name:"Qualification / Disqualification", items:[
+     "Build a qualification table and a separate disqualification table",
+     "Create a procedure with usage type Product Qualification, both element types",
+     "Point EvaluateDisqualification at the wrong table type; confirm the error",
+     "Add a category-level element; confirm category qualification works",
+     "Wire into Product Discovery Settings; test Browse Catalog end to end",
+     "Simulate an eligible and ineligible case before activating"]},
+   {name:"Cardinality", items:[
+     "Build a 3-level nested bundle; set group cardinality at each level; confirm only the lowest level is enforced at runtime",
+     "Override local cardinality on a 2nd-level component; confirm the original value is preserved and restorable"]}
+ ]},
+ {id:"cpq", title:"Configure, Price, Quote", weight:"18%", sections:[
+   {name:"Advanced Configurator (CML)", items:[
+     "Create ConstraintEngineNodeStatus (Text Area 5000, read/write, off page layouts) on Quote Line Item, Order Product, and Asset Action Source",
+     "Extend SalesTransactionContext: add ConstraintEngineNodeStatus to SalesTransactionItem and AssetConstraintEngineNodeStatus to AssetActionSource; map both and confirm TransactionType mapping; activate",
+     "Deploy the QuoteLineItem before-insert trigger that copies status from related AssetActionSource records",
+     "Enable Setup → Revenue Settings → Set Up Advanced Configuration Rules and Constraints; confirm Constraint Models appears in App Launcher",
+     "Build one of each rule type: Basic Logic Constraint, Conditional Logic Constraint, Dynamic Message Rule, Require Rule",
+     "Rebuild one constraint in the CML Editor instead of the Visual Builder; confirm identical runtime behavior",
+     "Write a two-way constraint (adding Product A auto-adds Product B, removing A auto-removes B) and test both directions"]},
+   {name:"Pricing Procedures & Apex Hooks", items:[
+     "Build a basic pricing procedure with no Apex",
+     "Enable Procedure Plan Orchestration settings",
+     "Add an Apex prehook; confirm first/last sequence constraint",
+     "Add an Apex posthook; confirm the same constraint",
+     "Implement RevSignaling.SignalingApexProcessor and wire it in",
+     "Test an external callout via UI vs. API vs. unsupported path"]}
+ ]},
+ {id:"contractsorders", title:"Contracts and Orders", weight:"11%", sections:[
+   {name:"Contracts", items:[
+     "Build a clause and insert it into a document template",
+     "Generate a contract from a quote",
+     "Test contracting Net Unit Price vs. Discount Level",
+     "Make an edit that triggers a new version",
+     "Simulate document reconciliation: export, edit offline, reimport",
+     "Route the contract through an approval step"]},
+   {name:"DRO", items:[
+     "Define a Product Fulfillment Scenario for one product",
+     "Build a Fulfillment Plan with two+ step definitions",
+     "Activate an order; confirm decomposition into Fulfillment Order Items",
+     "Enable In-Flight Amendments + Place Supplemental Orders",
+     "Submit, then modify mid-fulfillment; confirm Superseded status",
+     "Attempt the same change post-assetization; confirm it's blocked"]}
+ ]},
+ {id:"assetmgmt", title:"Asset Management", weight:"16%", sections:[
+   {name:"Asset Lifecycle", items:[
+     "Amend an asset; confirm new Asset Action + new ASP",
+     "Renew via Automatic Renewal, then Override Renewal Term",
+     "Cancel an asset; confirm no new ASP is created",
+     "Attempt to amend a manually-created asset; confirm it fails",
+     "Use the Rollback tool on a future-dated transaction",
+     "Test a field-only vs. price-only update; inspect ASP creation"]}
+ ]},
+ {id:"invoicemgmt", title:"Invoice Management", weight:"7%", sections:[
+   {name:"Billing & Invoices", items:[
+     "Set up a legal entity, billing policy, tax policy",
+     "Generate billing schedules from an activated order",
+     "Preview an invoice for two periods and generate the PDF",
+     "Run an on-demand invoice scheduler",
+     "Post a draft invoice manually, then automate via flow",
+     "Trigger an amendment credit memo; then void a posted invoice"]}
+ ]},
+];
+
+const CHECKLIST_CATEGORIES = CATEGORIES;
+
+// Maps each sub-topic (section name) to the same category used for flashcards, so chips align across Cards/Concepts/Checklist.
+const SECTION_TO_CATEGORY = {
+  "Context Service": "Context Service",
+  "APIs": "APIs",
+  "Foundational Setup & Permissions": "Permissions",
+  "Objects & Relationships": "Order Mgmt",
+  "Advanced Approvals": "Approvals",
+  "OmniStudio": "OmniStudio",
+  "Implementation Readiness": "Permissions",
+  "Manual Revenue Cloud Activation (pre-Go)": "Permissions",
+  "Project Delivery & UAT": "Project Delivery",
+  "Qualification / Disqualification": "Qualification",
+  "Cardinality": "Advanced Configurator",
+  "Advanced Configurator (CML)": "Advanced Configurator",
+  "Pricing Procedures & Apex Hooks": "Pricing/BRE",
+  "Contracts": "Contracts",
+  "DRO": "DRO",
+  "Asset Lifecycle": "Assets",
+  "Billing & Invoices": "Billing"
+};
+
+// Flatten into one page per sub-topic, each carrying its parent domain/weight (for header display) and its aligned category (for chip filtering).
+// Keys stay in the form `${domainId}-${sectionIndex}-${itemIndex}` so existing saved progress still lines up.
+const CHECKLIST_PAGES = CHECKLISTS.flatMap(domain =>
+  domain.sections.map((section, si) => ({
+    cat: SECTION_TO_CATEGORY[section.name] || "All",
+    domain: domain.title,
+    weight: domain.weight,
+    domainId: domain.id,
+    sectionIndex: si,
+    name: section.name,
+    items: section.items
+  }))
+);
+
+/* ---------------- STORAGE (localStorage — works in a standalone downloaded file) ---------------- */
+async function loadState(){
+  try{
+    const s = localStorage.getItem('rc-starred-cards');
+    starred = s ? JSON.parse(s) : {};
+  }catch(e){ starred = {}; }
+  try{
+    const c = localStorage.getItem('rc-checklist-progress');
+    checklistState = c ? JSON.parse(c) : {};
+  }catch(e){ checklistState = {}; }
+}
+async function saveStarred(){
+  try{ localStorage.setItem('rc-starred-cards', JSON.stringify(starred)); }catch(e){}
+}
+async function saveChecklist(){
+  try{ localStorage.setItem('rc-checklist-progress', JSON.stringify(checklistState)); }catch(e){}
+}
+
+/* ---------------- RENDER: CHIPS ---------------- */
+function renderChips(){
+  const chips = document.getElementById('chips');
+  let cats = [];
+  if(view==='cards') cats = CATEGORIES;
+  else if(view==='concepts') cats = CONCEPT_CATEGORIES;
+  else if(view==='checklist') cats = CHECKLIST_CATEGORIES;
+  chips.style.display = cats.length ? 'flex' : 'none';
+  const current = view==='concepts' ? conceptCat : (view==='checklist' ? checklistCat : activeCat);
+  chips.innerHTML = cats.map(c =>
+    `<div class="chip ${c===current?'active':''}" data-cat="${c}">${c}</div>`
+  ).join('');
+  chips.querySelectorAll('.chip').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      if(view==='concepts'){ conceptCat = el.dataset.cat; conceptIdx = 0; }
+      else if(view==='checklist'){ checklistCat = el.dataset.cat; checklistIdx = 0; }
+      else{
+        activeCat = el.dataset.cat;
+        if(view==='cards'){ cardIdx = 0; flipped = false; }
+        if(view==='quiz'){ buildQuizPool(); }
+      }
+      render();
+    });
+  });
+}
+
+/* ---------------- RENDER: CARDS ---------------- */
+function filteredCards(){
+  return activeCat==='All' ? CARDS : CARDS.filter(c=>c.cat===activeCat);
+}
+function renderCards(){
+  const deck = filteredCards();
+  const main = document.getElementById('main');
+  if(!deck.length){ main.innerHTML = '<div class="empty">No cards in this category.</div>'; return; }
+  if(cardIdx >= deck.length) cardIdx = 0;
+  const c = deck[cardIdx];
+  const key = c.cat+'|'+c.term;
+  main.innerHTML = `
+    <div class="progress-row"><span>Card ${cardIdx+1} of ${deck.length}</span><span>${activeCat}</span></div>
+    <div class="card" id="flipZone">
+      <button class="star ${starred[key]?'on':''}" id="starBtn">${starred[key]?'★':'☆'}</button>
+      <div class="tag">${c.cat}</div>
+      ${flipped
+        ? `<div class="def">${c.def}</div>`
+        : `<div class="term serif">${c.term}</div>`}
+      <div class="flip-hint">tap to ${flipped?'see term':'reveal'}</div>
+    </div>
+    <div class="card-controls">
+      <button id="prevBtn">← Prev</button>
+      <button id="shuffleBtn">Shuffle</button>
+      <button class="primary" id="nextBtn">Next →</button>
+    </div>
+  `;
+  document.getElementById('flipZone').addEventListener('click', (e)=>{
+    if(e.target.id==='starBtn') return;
+    flipped = !flipped; render();
+  });
+  document.getElementById('starBtn').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    starred[key] = !starred[key];
+    saveStarred();
+    render();
+  });
+  document.getElementById('prevBtn').addEventListener('click', ()=>{
+    cardIdx = (cardIdx-1+deck.length)%deck.length; flipped=false; render();
+  });
+  document.getElementById('nextBtn').addEventListener('click', ()=>{
+    cardIdx = (cardIdx+1)%deck.length; flipped=false; render();
+  });
+  document.getElementById('shuffleBtn').addEventListener('click', ()=>{
+    cardIdx = Math.floor(Math.random()*deck.length); flipped=false; render();
+  });
+}
+
+/* ---------------- RENDER: CONCEPTS ---------------- */
+function filteredConcepts(){
+  return conceptCat==='All' ? CONCEPTS : CONCEPTS.filter(c=>c.cat===conceptCat);
+}
+function renderConcepts(){
+  const deck = filteredConcepts();
+  const main = document.getElementById('main');
+  if(!deck.length){ main.innerHTML = '<div class="empty">No concepts in this category.</div>'; return; }
+  if(conceptIdx >= deck.length) conceptIdx = 0;
+  const c = deck[conceptIdx];
+  main.innerHTML = `
+    <div class="progress-row"><span>${conceptIdx+1} of ${deck.length}</span><span>${conceptCat}</span></div>
+    <div class="concept-card">
+      <div class="tag">${c.cat}</div>
+      <h2 class="serif">${c.title}</h2>
+      <div class="body">${c.body}</div>
+    </div>
+    <div class="card-controls">
+      <button id="prevBtn">← Prev</button>
+      <button class="primary" id="nextBtn">Next →</button>
+    </div>
+  `;
+  document.getElementById('prevBtn').addEventListener('click', ()=>{
+    conceptIdx = (conceptIdx-1+deck.length)%deck.length; render();
+  });
+  document.getElementById('nextBtn').addEventListener('click', ()=>{
+    conceptIdx = (conceptIdx+1)%deck.length; render();
+  });
+}
+
+/* ---------------- RENDER: QUIZ ---------------- */
+function buildQuizPool(){
+  quizPool = (activeCat==='All' ? QUIZ : QUIZ.filter(q=>q.cat===activeCat)).slice();
+  for(let i=quizPool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [quizPool[i],quizPool[j]]=[quizPool[j],quizPool[i]]; }
+  quizIdx = 0; quizScore = 0; quizAnswered = false;
+}
+function renderQuiz(){
+  const main = document.getElementById('main');
+  if(!quizPool.length){ buildQuizPool(); }
+  if(!quizPool.length){ main.innerHTML = '<div class="empty">No questions in this category.</div>'; return; }
+  if(quizIdx >= quizPool.length){
+    const pct = Math.round((quizScore/quizPool.length)*100);
+    main.innerHTML = `
+      <div class="quiz-summary">
+        <div style="color:var(--text-dim); font-size:13px;">Quiz complete — ${activeCat}</div>
+        <div class="score">${quizScore}/${quizPool.length}</div>
+        <div class="pct">${pct}% correct</div>
+        <button id="restartBtn">Try again</button>
+      </div>`;
+    document.getElementById('restartBtn').addEventListener('click', ()=>{ buildQuizPool(); render(); });
+    return;
+  }
+  const q = quizPool[quizIdx];
+  const letters = ['A','B','C','D'];
+  main.innerHTML = `
+    <div class="q-head"><span>Question ${quizIdx+1} of ${quizPool.length}</span><span>${q.cat}</span></div>
+    <div class="q-text">${q.q}</div>
+    <div id="optWrap">
+      ${q.opts.map((o,i)=>`<button class="opt" data-i="${i}"><span class="letter">${letters[i]}</span>${o}</button>`).join('')}
+    </div>
+    <div class="explain" id="explainBox">${q.exp}</div>
+    <button class="quiz-next" id="nextQBtn">${quizIdx+1===quizPool.length ? 'See results' : 'Next question →'}</button>
+  `;
+  document.querySelectorAll('.opt').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(quizAnswered) return;
+      quizAnswered = true;
+      const i = parseInt(btn.dataset.i);
+      document.querySelectorAll('.opt').forEach(b=>{
+        const bi = parseInt(b.dataset.i);
+        if(bi===q.correct) b.classList.add('correct');
+        else if(bi===i) b.classList.add('incorrect');
+      });
+      if(i===q.correct) quizScore++;
+      document.getElementById('explainBox').classList.add('show');
+      document.getElementById('nextQBtn').classList.add('show');
+    });
+  });
+  document.getElementById('nextQBtn').addEventListener('click', ()=>{
+    quizIdx++; quizAnswered = false; render();
+  });
+}
+
+/* ---------------- RENDER: CHECKLIST ---------------- */
+function filteredChecklistPages(){
+  return checklistCat==='All' ? CHECKLIST_PAGES : CHECKLIST_PAGES.filter(p=>p.cat===checklistCat);
+}
+function renderChecklist(){
+  const main = document.getElementById('main');
+  const deck = filteredChecklistPages();
+  if(!deck.length){ main.innerHTML = '<div class="empty">No checklist pages in this category.</div>'; return; }
+  if(checklistIdx >= deck.length) checklistIdx = 0;
+  const page = deck[checklistIdx];
+
+  let doneCount = 0;
+  const itemsHtml = page.items.map((txt, ii)=>{
+    const k = page.domainId+'-'+page.sectionIndex+'-'+ii;
+    const isDone = !!checklistState[k];
+    if(isDone) doneCount++;
+    return `<div class="item ${isDone?'done':''}">
+      <div class="box ${isDone?'checked':''}" data-k="${k}">${isDone?'✓':''}</div>
+      <p data-k="${k}">${txt}</p>
+    </div>`;
+  }).join('');
+
+  main.innerHTML = `
+    <div class="progress-row"><span>${checklistIdx+1} of ${deck.length}</span><span>${checklistCat}</span></div>
+    <div class="topic-block">
+      <h3 class="serif">${page.name}</h3>
+      <div class="count">${page.domain} (${page.weight}) · ${doneCount}/${page.items.length} complete</div>
+      ${itemsHtml}
+    </div>
+    <div class="card-controls">
+      <button id="prevBtn">← Prev</button>
+      <button class="primary" id="nextBtn">Next →</button>
+    </div>
+    <div class="reset-link" id="resetChecklist">Reset all checklist progress</div>
+  `;
+
+  main.querySelectorAll('[data-k]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const k = el.dataset.k;
+      checklistState[k] = !checklistState[k];
+      saveChecklist();
+      renderChecklist();
+    });
+  });
+  document.getElementById('prevBtn').addEventListener('click', ()=>{
+    checklistIdx = (checklistIdx-1+deck.length)%deck.length; renderChecklist();
+  });
+  document.getElementById('nextBtn').addEventListener('click', ()=>{
+    checklistIdx = (checklistIdx+1)%deck.length; renderChecklist();
+  });
+  const resetEl = document.getElementById('resetChecklist');
+  if(resetEl) resetEl.addEventListener('click', ()=>{
+    checklistState = {};
+    saveChecklist();
+    renderChecklist();
+  });
+}
+
+/* ---------------- MAIN RENDER ---------------- */
+function render(){
+  document.querySelectorAll('.navbtn').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
+  const subMap = {
+    cards: "Tap a card to flip it. Star the ones to drill again.",
+    concepts: "Read-through cards on objects, relationships, and setup planning.",
+    checklist: "Hands-on tasks to run in a sandbox. Progress is saved."
+  };
+  document.getElementById('headerSub').textContent = subMap[view];
+  renderChips();
+  if(view==='cards') renderCards();
+  else if(view==='concepts') renderConcepts();
+  else renderChecklist();
+}
+
+document.querySelectorAll('.navbtn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    view = btn.dataset.view;
+    activeCat = 'All';
+    cardIdx = 0; flipped = false;
+    render();
+  });
+});
+
+loadState().then(render);
+</script>
+</body>
+</html>
