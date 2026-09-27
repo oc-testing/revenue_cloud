@@ -106,6 +106,7 @@
   .concept-card .body ul{margin:0 0 12px; padding-left:20px;}
   .concept-card .body li{font-size:14.5px; color:var(--text-dim); line-height:1.6; margin-bottom:6px;}
   .concept-card .body strong{color:var(--text); font-weight:600;}
+  .concept-card .body pre{font-family:"SF Mono",Consolas,"Courier New",monospace; white-space:pre-wrap; margin:0 0 12px; line-height:1.5;}
 
   .empty{text-align:center; color:var(--text-dim); padding:40px 20px; font-size:14px;}
   .reset-link{display:block; text-align:center; margin:20px 0 4px; color:var(--text-dim); font-size:12px; text-decoration:underline; cursor:pointer;}
@@ -177,6 +178,16 @@ const CARDS = [
  {cat:"Advanced Configurator", term:"Local variable", def:"A value scoped to a single rule. Works for a one-off case, but repeating the same local variable across multiple rules is a maintainability red flag — a global constant is preferred once reuse is likely."},
  {cat:"Advanced Configurator", term:"Default value (CML)", def:"A pre-selected value on a relation when the configuration loads, e.g. 'default Laptopi58GB(2);' — sets an initial quantity/selection without the user having to choose it."},
  {cat:"Advanced Configurator", term:"Context-aware rule", def:"A CML rule that references a field OUTSIDE the bundle itself — e.g. an Opportunity or Account field — to dynamically adjust which options or attribute values are valid at runtime, not just sibling attributes within the same configuration."},
+ {cat:"Advanced Configurator", term:"define (verified)", def:"The REAL keyword for a global constant in CML, confirmed in Salesforce's official CML User Guide — e.g. define COLORS [\"Red\", \"Blue\", \"White\"]. Not 'global constant', which was an earlier unverified guess."},
+ {cat:"Advanced Configurator", term:"Visual Builder term → raw CML construct", def:"Basic Logic Constraint = Logical Constraint (constraint(...) with no implication). Conditional Logic Constraint = the Implication Operator (->). Dynamic Message Rule = Message Rule (message(...) with Info/Warning/Error severity). Require Rule = Require Rule (require(...), same name in both)."},
+ {cat:"Advanced Configurator", term:"require() — verified syntax", def:"require(logic expression, relationship[type]{var = value, .., var = value}); — auto-includes a specific type with specific attribute values when a condition is met. Optional trailing string argument for an explanation message. Confirmed directly from the official CML User Guide's House example."},
+ {cat:"Advanced Configurator", term:"message() — verified syntax", def:"message(logical expression, string, [args...], severity); — severity is Info, Warning, or Error. Info requires no action. Warning lets the user continue the current task but blocks the NEXT step until addressed. Error blocks the current task entirely — except in the Transaction Line Editor, where a user can still save despite an Error message."},
+ {cat:"Advanced Configurator", term:"Exclude Rule", def:"exclude(logic expression, relationship[type]); automatically REMOVES a type from a relationship when a condition is met. Unlike other constraints, the engine OVERRIDES user input to satisfy an exclude rule — this is the one construct where the engine changes what the user selected rather than erroring."},
+ {cat:"Advanced Configurator", term:"Preference Rule", def:"preference(logic expression, string); — encourages the solver to satisfy a condition but doesn't enforce it. If unmet, delivers an Info-severity message rather than blocking anything. Weaker than a Require Rule."},
+ {cat:"Advanced Configurator", term:"Hide/Disable Rule", def:"rule(condition, \"hide\"|\"disable\", scope, target); — hide removes a component/attribute/value from the menu entirely; disable keeps it visible but prevents selection. Applies to bundle components, product attributes, or individual attribute values."},
+ {cat:"Advanced Configurator", term:"Table Constraint", def:"table(var1,...,varN, {row1 values}, {row2 values}, ...); — defines valid COMBINATIONS of values as explicit rows, rather than expressing the logic as a formula."},
+ {cat:"Advanced Configurator", term:"User input order matters", def:"The constraint engine never overrides user-selected values to satisfy a constraint (except Exclude Rule) — if a user sets an attribute in a way that later violates a constraint, the engine shows an ERROR rather than silently changing their earlier choice."},
+ {cat:"Advanced Configurator", term:"CML performance best practices (official)", def:"Specify the smallest cardinality range needed. Prefer int over decimal/double where possible (fewer permutations). Keep variable domains (possible values) as small as possible. Put calculations inside constraint(), not as inline expressions. Combine related relationships into one instead of many separate ones."},
  {cat:"Advanced Configurator", term:"Standard vs. Advanced Configurator", def:"Standard (BRE) applies rules sequentially, one direction. Advanced (CML) is constraint-based — a solver resolves dependencies in both directions and can auto-resolve conflicts."},
  {cat:"Advanced Configurator", term:"Visual Builder vs. CML Editor", def:"Two editors for the same constraint model; both support the same rules, but CML allows more complex logic. You can switch between them anytime."},
 
@@ -475,6 +486,48 @@ const CONCEPTS = [
      <li>Sync or refresh the underlying data</li>
    </ol>`},
 
+ {cat:"Advanced Configurator", title:"Verified CML Example: Red/Blue Case Constraint", body:`
+   <p><strong>Scenario:</strong> a laptop bundle offers a Case color (Red/Blue). Rule: picking Red should trigger a warning if quantity exceeds 2, and if the room count exceeds a threshold a specific accessory is required.</p>
+   <p style="color:var(--good); font-size:12.5px;">Rebuilt using verified syntax from Salesforce's official CML User Guide (Winter '25) — not illustrative this time.</p>
+   <p><strong>Global constants use 'define', not 'global constant':</strong></p>
+   <pre style="background:var(--surface-2); padding:10px; border-radius:8px; font-size:12.5px; color:var(--text); overflow-x:auto;">define COLORS ["Red", "Blue", "White"]</pre>
+   <p><strong>Relation with cardinality — confirmed [min..max] syntax:</strong></p>
+   <pre style="background:var(--surface-2); padding:10px; border-radius:8px; font-size:12.5px; color:var(--text); overflow-x:auto;">type House {
+   relation rooms : Room[0..10];
+   string color = COLORS;
+}</pre>
+   <p><strong>Logical Constraint</strong> (the Visual Builder's "Basic Logic Constraint" — a statement that must hold true):</p>
+   <pre style="background:var(--surface-2); padding:10px; border-radius:8px; font-size:12.5px; color:var(--text); overflow-x:auto;">constraint(color == "Red" ? windowShape == "Oval" : windowShape == "Square",
+  "If color is red, windows should be oval. Otherwise square.");</pre>
+   <p><strong>Implication Operator (→)</strong> (the Visual Builder's "Conditional Logic Constraint" — if precondition, then postcondition):</p>
+   <pre style="background:var(--surface-2); padding:10px; border-radius:8px; font-size:12.5px; color:var(--text); overflow-x:auto;">constraint((color == "Red") -> (size == "S"));</pre>
+   <p><strong>Message Rule</strong> (the Visual Builder's "Dynamic Message Rule" — real syntax takes a severity: Info, Warning, or Error):</p>
+   <pre style="background:var(--surface-2); padding:10px; border-radius:8px; font-size:12.5px; color:var(--text); overflow-x:auto;">message(rooms.size > 8, "That's {} rooms!", rooms[Room], "Info");</pre>
+   <p><strong>What this corrects from the earlier version:</strong> constants use 'define', not 'global constant'. Conditional logic uses the implication operator (->), not an if/block structure. Message severity (Info/Warning/Error) is a real, required-style parameter — Warning blocks the next step until addressed; Error blocks the current task entirely; Info requires no action.</p>`},
+
+ {cat:"Advanced Configurator", title:"Official CML Example: The MediaRoom Require Rule", body:`
+   <p>Straight from Salesforce's own CML User Guide's worked "Modeling a House" example — this is the real Require Rule construct, and it's the direct source behind a documented exam question shape.</p>
+   <pre style="background:var(--surface-2); padding:10px; border-radius:8px; font-size:12.5px; color:var(--text); overflow-x:auto;">type House {
+   relation rooms : Room[0..10];
+
+   require(rooms.size > 5, rooms[MediaRoom]{ width = 5, height = 7, color = "Red" });
+
+   // with explanation message
+   require(rooms.size > 10, rooms[MediaRoom], "Failure: Big houses should have a media room");
+}
+
+type Room;
+type MediaRoom : Room;</pre>
+   <p><strong>Line by line:</strong></p>
+   <ul>
+     <li><strong>relation rooms : Room[0..10];</strong> — the house can have 0 to 10 rooms total, using the confirmed [min..max] cardinality syntax.</li>
+     <li><strong>require(rooms.size > 5, rooms[MediaRoom]{...});</strong> — the require() function's real syntax: a logic expression (room count over 5) as the first argument, and the required relationship/type plus its attribute values as the second. If the house has more than 5 rooms, a MediaRoom with width=5, height=7, color="Red" must be included.</li>
+     <li><strong>The second require() call</strong> shows the optional explanation-message argument: a string shown if the requirement can't be satisfied.</li>
+     <li><strong>type MediaRoom : Room;</strong> — MediaRoom is declared as a subtype of Room (inheritance), so it can be referenced inside the rooms relationship.</li>
+   </ul>
+   <p><strong>Correcting a circulating exam-prep version:</strong> some third-party practice questions show cardinality written as Room[4,5] (comma, no dots) as a plausible answer choice. That notation does NOT match the confirmed [min..max] syntax in Salesforce's own guide — treat comma-style cardinality notation as a likely-fabricated distractor if you see it.</p>
+   <p><strong>Exam-recognition shape:</strong> "if [condition], then [type] with [these specific attribute values] must be included" is the Require Rule pattern — distinct from a plain constraint(), which enforces a rule but doesn't auto-add a component.</p>`},
+
  {cat:"Advanced Configurator", title:"Advanced Configurator Setup Sequence", body:`
    <p>This is a precise, multi-step sequence — worth knowing in order rather than as a single "toggle":</p>
    <ol style="padding-left:20px; color:var(--text-dim); font-size:14.5px; line-height:1.6;">
@@ -744,7 +797,9 @@ const CHECKLISTS = [
      "Enable Setup → Revenue Settings → Set Up Advanced Configuration Rules and Constraints; confirm Constraint Models appears in App Launcher",
      "Build one of each rule type: Basic Logic Constraint, Conditional Logic Constraint, Dynamic Message Rule, Require Rule",
      "Rebuild one constraint in the CML Editor instead of the Visual Builder; confirm identical runtime behavior",
-     "Write a two-way constraint (adding Product A auto-adds Product B, removing A auto-removes B) and test both directions"]},
+     "Write a two-way constraint (adding Product A auto-adds Product B, removing A auto-removes B) and test both directions",
+     "Build the Red/Blue case-color example in the CML Editor using verified syntax: a 'define' constant, an implication-operator constraint, and a message() call with a severity level; confirm the behavior difference between Info, Warning, and Error",
+     "Rebuild the official MediaRoom require() example from the CML User Guide in a sandbox constraint model; confirm the MediaRoom is auto-included once room count exceeds the threshold"]},
    {name:"Pricing Procedures & Apex Hooks", items:[
      "Build a basic pricing procedure with no Apex",
      "Enable Procedure Plan Orchestration settings",
