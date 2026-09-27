@@ -320,6 +320,11 @@ const CARDS = [
  {cat:"SF Foundations", term:"External Lookup / Indirect Lookup", def:"Used for connecting to external objects (data federated in via Salesforce Connect) — not typical in a pure Revenue Cloud build, but worth recognizing the name."},
  {cat:"SF Foundations", term:"User Access Policies (UAP)", def:"A STANDARD, out-of-the-box Salesforce feature (Setup → User Access Policies) — not enabled by default; turned on via User Management Settings. Automates granting/revoking Permission Sets, Permission Set Groups, Permission Set Licenses, Package Licenses, Groups, and Queues based on criteria matched against standard or custom User fields."},
  {cat:"SF Foundations", term:"UAP — triggers and limits", def:"Runs on user create, user update, or on-demand/manual against users who already meet criteria. Went GA around Spring '24; up to 200 active policies, with a configurable run Order when a user matches more than one. Positioned by Salesforce as the no-code replacement for what used to require custom Flow/Apex to provision access."},
+ {cat:"SF Foundations", term:"Validation Rule — Error Location", def:"Every Validation Rule has an Error Location setting: 'Top of Page' (a banner at the top of the record) or a specific Field (the error displays inline, directly under that field). This is a standard, real Setup option — not something specific to Revenue Cloud, but it governs how ANY validation error displays, including on Quote/Order/Asset records."},
+ {cat:"SF Foundations", term:"Error Location fallback rule", def:"If the Error Location is set to a specific field, and that field is later deleted, made read-only, or removed from the page layout, Salesforce automatically falls back to displaying the error at the Top of Page instead — it doesn't just silently fail to show the error."},
+ {cat:"SF Foundations", term:"Field Error Location — known Lightning quirk", def:"A documented issue: when Error Location is set to a compound field (like an Address field's sub-component, e.g. Billing City), the inline error may not display correctly in Lightning Experience during inline editing. The documented workaround is to set Error Location to Top of Page instead for these cases."},
+ {cat:"SF Foundations", term:"Choosing Field vs. Top of Page (best practice)", def:"Use Field Error Location when the rule relates to one specific field in one page section — clearest for the user. Use Top of Page when the rule spans multiple fields that could be positioned in different sections, or on layouts/objects where the field might not always be visible."},
+ {cat:"SF Foundations", term:"Validation Rule vs. CML vs. Qualification Rule", def:"Qualification/Disqualification: can the customer even see/select this product? (Product Discovery, before configuration.) CML: given they're configuring it, is this specific combination allowed? (during configuration.) Validation Rule: is this field's value acceptable regardless of how it got set? (on save, any object, config-unaware.)"},
 ];
 
 const CONCEPT_CATEGORIES = CATEGORIES;
@@ -586,6 +591,16 @@ type MediaRoom : Room;</pre>
    <p><strong>Who leads it:</strong> typically a Business Analyst (BA), who has been the liaison between business and technology teams from the very first step of the project — which is exactly why they're positioned to lead this final step too.</p>
    <p><strong>What UAT is actually checking:</strong> not defects (that's QA/functional testing's job) — UAT confirms the system behaves as expected in REAL-WORLD business scenarios and is genuinely ready for real users.</p>
    <p><strong>Best practices:</strong> define acceptance criteria, create test cases, select the right users, write test scripts based on user stories, prepare the testing environment, and track every piece of feedback — bugs, change requests, and positive comments alike — then prioritize what actually needs fixing before launch.</p>`},
+
+ {cat:"SF Foundations", title:"Validation Rules vs. CML vs. Qualification Rules", body:`
+   <p>Three mechanisms that can look similar but govern different questions, at different points in the process:</p>
+   <ul>
+     <li><strong>Validation Rules</strong> enforce data integrity on a single object's own field values, evaluated on save — regardless of which UI triggered the save (API, data load, Lightning page, Transaction Line Editor). Not product-config-aware; doesn't know about bundles or configuration state.</li>
+     <li><strong>CML (Advanced Configurator constraints)</strong> govern product CONFIGURATION validity — which attributes/options are compatible within a bundle, cardinality limits, auto-add/remove behavior. Runs during configuration, shaping the line before it's ever saved as a plain record.</li>
+     <li><strong>Qualification/Disqualification Rules</strong> govern which products/categories are even OFFERED to a given customer or context in the first place, evaluated during Product Discovery/Browse Catalog — before configuration ever starts.</li>
+   </ul>
+   <p><strong>The conceptual ordering:</strong> Qualification/Disqualification decides what shows up in the catalog → CML decides how that product can be configured → Validation Rules catch any remaining data-correctness issue on the resulting record, independent of how it got there.</p>
+   <p><strong>Quick scenario test:</strong> "Can the customer even see/select this product?" → Qualification. "Given they're building this bundle, is this specific combination allowed?" → CML. "Is this field's value acceptable regardless of how it got set?" → Validation Rule.</p>`},
 
  {cat:"SF Foundations", title:"Screen Flow vs. OmniScript vs. FlexCard", body:`
    <p>All three put a UI in front of a user, but they solve different shapes of interaction:</p>
