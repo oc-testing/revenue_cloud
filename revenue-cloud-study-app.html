@@ -129,7 +129,7 @@
 <script>
 /* ---------------- DATA ---------------- */
 
-const CATEGORIES = ["All","Context Service","Pricing/BRE","Advanced Configurator","Qualification","Contracts","Assets","Billing","DRO","Permissions","Approvals","APIs","Order Mgmt","Project Delivery","OmniStudio","Agentforce","Reporting","Catalog Mgmt"];
+const CATEGORIES = ["All","Context Service","Pricing/BRE","Advanced Configurator","Qualification","Contracts","Assets","Billing","DRO","Permissions","Approvals","APIs","Order Mgmt","Project Delivery","OmniStudio","Agentforce","Reporting","Catalog Mgmt","SF Foundations"];
 
 const CARDS = [
  {cat:"Context Service", term:"Mapping Intent", def:"The setting on a Context Mapping that determines its purpose: Hydration, Persistence, Association, or Translation. Can be combined on one mapping."},
@@ -272,6 +272,43 @@ const CARDS = [
  {cat:"Catalog Mgmt", term:"Price Book Entry", def:"The record of a product/service and its list price WITHIN a specific price book — one product can have different Price Book Entries (different prices) across different price books. Important: you can't change a product's Product Selling Model after it's been associated with a Price Book Entry."},
  {cat:"Catalog Mgmt", term:"Cost Book / Cost Book Entry", def:"A parallel structure to Price Book/Price Book Entry, but for COST instead of selling price. A Cost Book can be referenced by multiple Price Books — the idea being a product may have many price points (many Price Book Entries) but just ONE underlying cost. Cost Book Entry values feed Quote Line Item cost/margin fields and formulas."},
  {cat:"Catalog Mgmt", term:"Standard Price Book", def:"The one price book every org gets by default. Referenced directly in the manual Revenue Cloud activation sequence ('Activate the Standard Price Book' — the final setup step) and required before most quoting/ordering flows will work."},
+ {cat:"SF Foundations", term:"Flow types", def:"Screen Flow (has a UI, user clicks through steps), Record-Triggered Flow (runs on create/update/delete, before-save or after-save), Autolaunched Flow (no UI, called by Apex/another flow), Scheduled Flow (time-based), Flow Orchestration (coordinates multiple flows across Stages/Steps — what Advanced Approvals is built on)."},
+ {cat:"SF Foundations", term:"Flow building blocks", def:"Variables (store values), Elements (Get/Create/Update/Delete Records, Decision, Loop, Assignment), Subflows (a flow calling another flow)."},
+ {cat:"SF Foundations", term:"LWC — what it is", def:"Lightning Web Components: Salesforce's modern JS framework for custom UI, built on native web standards (not the older proprietary Aura framework). A component = HTML + JS + (usually) CSS, all sharing one name."},
+ {cat:"SF Foundations", term:"@api decorator", def:"Exposes a property or method publicly so it can be set/called from OUTSIDE the component — e.g. from a Lightning page or a parent component."},
+ {cat:"SF Foundations", term:"@wire decorator", def:"Connects a component to Salesforce data reactively — wiring to an Apex method or a standard UI API call, so data streams in without manual imperative calls."},
+ {cat:"SF Foundations", term:"LWC parent-child communication", def:"Parent → child: public properties (@api). Child → parent: custom events (this.dispatchEvent(new CustomEvent(...)))."},
+ {cat:"SF Foundations", term:"Profile vs. Permission Set vs. PSL", def:"Profile: baseline access, exactly one per user (older, broad-brush). Permission Set License (PSL): unlocks a feature CATEGORY org-wide — a prerequisite before any permission set for that feature can be assigned. Permission Set: grants specific object/field/feature access, layered on top of the profile; a user can have many."},
+ {cat:"SF Foundations", term:"Modern access-model best practice", def:"Keep profiles minimal/generic; do almost all access-granting through Permission Sets and Permission Set Groups (which bundle several permission sets into one assignable unit)."},
+ {cat:"SF Foundations", term:"Lightning App Builder", def:"The drag-and-drop tool (Setup → Edit Page) for building Lightning Pages — record pages, home pages, app pages. A page is made of regions containing components (standard or custom LWCs)."},
+ {cat:"SF Foundations", term:"Component visibility rules", def:"Show/hide a component on a Lightning Page based on field values, user profile, or device type — without needing separate page versions."},
+ {cat:"SF Foundations", term:"Lookup vs. Master-Detail relationship", def:"Lookup: loosely connects two objects; child can exist independently. Master-Detail: tightly couples them; deleting the parent deletes the children, and sharing cascades parent → child."},
+ {cat:"SF Foundations", term:"Junction object", def:"A custom object with two master-detail (or lookup) relationships, used to model many-to-many relationships — the exact pattern behind a custom availability-mapping object like Product_Region_Availability__c."},
+ {cat:"SF Foundations", term:"Apex Class / Trigger / Invocable Method", def:"Apex Class: reusable server-side logic, callable from Flow, LWC, or another class. Apex Trigger: runs automatically before/after DML on a specific object (e.g. the QuoteLineItem before-insert trigger from Advanced Configurator setup). Invocable Method: an Apex method exposed specifically so Flow can call it as an action (e.g. Run Config Rules)."},
+ {cat:"SF Foundations", term:"Screen Flow vs. FlexCard — the decision test", def:"Is the user being guided through a SEQUENCE of steps, or looking at a SUMMARY and taking a quick action? Sequence → Screen Flow (or OmniScript if OmniStudio is in play). Summary + action → FlexCard."},
+ {cat:"SF Foundations", term:"Screen Flow vs. OmniScript", def:"Both are guided, multi-step processes. Screen Flow is native to core Salesforce, no OmniStudio license needed, strong at decision logic/data manipulation, plainer UI. OmniScript needs OmniStudio, pairs naturally with FlexCards, offers richer UI — but isn't available by default."},
+ {cat:"SF Foundations", term:"Can Revenue Cloud be built without OmniStudio?", def:"Yes. OmniStudio is a declarative accelerator, not a required layer — FlexCard/OmniScript auto-generate LWCs; Integration Procedures are effectively Apex orchestration; Data Mappers are SOQL/DML or Flow's Get/Create/Update Records. A large deployment can be built 100% on native LWC + Apex + Flow."},
+ {cat:"SF Foundations", term:"Why choose OmniStudio anyway", def:"Speed/lower-code maintenance (a BA can adjust an OmniScript or FlexCard without a deploy), built-in reusability patterns for minimizing server round-trips, and OmniOut — the same experience running outside Salesforce entirely, without a separate exposure strategy."},
+ {cat:"SF Foundations", term:"Why choose native LWC/Apex/Flow instead", def:"No separate OmniStudio license/cost, team already skilled in pro-code tooling, mature Apex testing/CI/CD (@isTest, version control diffing), and finer-grained control over exactly what happens on each server call."},
+ {cat:"SF Foundations", term:"Report Type", def:"Defines which objects are joinable and which fields are available in a report — e.g. 'Quotes with Quote Line Items' lets you report across both in one report. Standard report types cover common relationships; custom report types are needed for combinations Salesforce doesn't provide out of the box."},
+ {cat:"SF Foundations", term:"Report formats", def:"Tabular: a flat list, no grouping — can't feed most chart types. Summary: grouped rows with subtotals, the most common format. Matrix: grouped by rows AND columns at once, like a pivot table. Joined: multiple report blocks in one report, potentially from different report types, side by side."},
+ {cat:"SF Foundations", term:"Filter Logic", def:"Individual filters combine with AND by default. Filter Logic (e.g. '1 AND (2 OR 3)') overrides that with explicit boolean logic across numbered filters."},
+ {cat:"SF Foundations", term:"Dashboards run off reports, not raw data", def:"Every dashboard component (chart, table, metric, gauge) points at a source report — a dashboard is only as fresh as its underlying reports' running user and refresh schedule."},
+ {cat:"SF Foundations", term:"Standard Dashboard — running user", def:"Runs as ONE fixed running user for every viewer — meaning everyone sees the SAME data, even data they personally couldn't access, because it's filtered through the running user's access, not the viewer's own."},
+ {cat:"SF Foundations", term:"Dynamic Dashboard — running user", def:"Runs as 'the logged-in user' — each viewer sees data filtered through their OWN access. Use this when different roles should see different slices of the same data (e.g. a regional manager seeing only their region)."},
+ {cat:"SF Foundations", term:"Organization-Wide Defaults (OWD)", def:"The baseline, most restrictive setting per object: Private, Public Read Only, or Public Read/Write. This is the floor every other sharing mechanism builds on top of — it can only be widened from here, not further restricted by later layers."},
+ {cat:"SF Foundations", term:"Role Hierarchy (sharing)", def:"If OWD is Private, users above a record's owner in the role hierarchy automatically get access to their subordinates' records."},
+ {cat:"SF Foundations", term:"Sharing Rules", def:"Declarative, criteria-based or ownership-based rules that open up ADDITIONAL access beyond OWD/role hierarchy. Sharing rules can only GRANT more access — never restrict."},
+ {cat:"SF Foundations", term:"Manual Sharing vs. Apex Managed Sharing", def:"Manual Sharing: a user/admin shares one specific record with another user/group, one-off. Apex Managed Sharing: programmatic sharing via Apex, used when the who-sees-what logic is too complex for declarative sharing rules."},
+ {cat:"SF Foundations", term:"Field-Level Security (FLS)", def:"A separate, orthogonal layer from record-level (row) access. Even if a user can see a record via OWD/role hierarchy/sharing rules, a specific field can still be hidden from them via FLS on their Profile or Permission Set."},
+ {cat:"SF Foundations", term:"Permission vs. UI hiding — the sharing-model tie-in", def:"Removing an API-level permission is a real security control, enforced at the data-access layer (sharing/FLS/permissions). Hiding a button on a page layout is NOT — a user with API access and no visible button can still call the API directly."},
+ {cat:"SF Foundations", term:"Lookup Relationship — precise behavior", def:"Loose coupling. Child can exist without a parent (nullable unless marked required). Deleting the parent does NOT delete the child by default (a 'delete cascade' checkbox exists as an option in newer orgs). Sharing does NOT cascade from parent to child."},
+ {cat:"SF Foundations", term:"Master-Detail Relationship — precise behavior", def:"Tight coupling. Child MUST have a parent (field can't be blank). Deleting the parent deletes ALL children with no exceptions. Sharing cascades: visibility of the parent determines visibility of the child. The child can't have its own independent OWD — it inherits the parent's."},
+ {cat:"SF Foundations", term:"Why junction objects use Master-Detail", def:"Roll-up summary fields can only be created across a Master-Detail relationship — that's specifically why junction objects use Master-Detail (not Lookup) for a many-to-many pattern: you need the roll-up capability."},
+ {cat:"SF Foundations", term:"Hierarchical Relationship", def:"A special lookup type that ONLY exists on the User object — lets a user record look up to another user record. This is literally what powers the 'Manager' field and the Role Hierarchy itself."},
+ {cat:"SF Foundations", term:"External Lookup / Indirect Lookup", def:"Used for connecting to external objects (data federated in via Salesforce Connect) — not typical in a pure Revenue Cloud build, but worth recognizing the name."},
+ {cat:"SF Foundations", term:"User Access Policies (UAP)", def:"A STANDARD, out-of-the-box Salesforce feature (Setup → User Access Policies) — not enabled by default; turned on via User Management Settings. Automates granting/revoking Permission Sets, Permission Set Groups, Permission Set Licenses, Package Licenses, Groups, and Queues based on criteria matched against standard or custom User fields."},
+ {cat:"SF Foundations", term:"UAP — triggers and limits", def:"Runs on user create, user update, or on-demand/manual against users who already meet criteria. Went GA around Spring '24; up to 200 active policies, with a configurable run Order when a user matches more than one. Positioned by Salesforce as the no-code replacement for what used to require custom Flow/Apex to provision access."},
 ];
 
 const CONCEPT_CATEGORIES = CATEGORIES;
@@ -487,6 +524,58 @@ const CONCEPTS = [
    <p><strong>What UAT is actually checking:</strong> not defects (that's QA/functional testing's job) — UAT confirms the system behaves as expected in REAL-WORLD business scenarios and is genuinely ready for real users.</p>
    <p><strong>Best practices:</strong> define acceptance criteria, create test cases, select the right users, write test scripts based on user stories, prepare the testing environment, and track every piece of feedback — bugs, change requests, and positive comments alike — then prioritize what actually needs fixing before launch.</p>`},
 
+ {cat:"SF Foundations", title:"Screen Flow vs. OmniScript vs. FlexCard", body:`
+   <p>All three put a UI in front of a user, but they solve different shapes of interaction:</p>
+   <table style="width:100%; border-collapse:collapse; font-size:13.5px; color:var(--text-dim);">
+     <tr style="border-bottom:1px solid var(--line);"><td style="padding:6px 4px; color:var(--text); font-weight:600;">Shape</td><td style="padding:6px 4px; color:var(--text); font-weight:600;">Screen Flow</td><td style="padding:6px 4px; color:var(--text); font-weight:600;">OmniScript</td><td style="padding:6px 4px; color:var(--text); font-weight:600;">FlexCard</td></tr>
+     <tr style="border-bottom:1px solid var(--line);"><td style="padding:6px 4px;">Interaction</td><td style="padding:6px 4px;">Guided steps</td><td style="padding:6px 4px;">Guided steps</td><td style="padding:6px 4px;">At-a-glance + actions</td></tr>
+     <tr style="border-bottom:1px solid var(--line);"><td style="padding:6px 4px;">Ecosystem</td><td style="padding:6px 4px;">Core Salesforce</td><td style="padding:6px 4px;">OmniStudio</td><td style="padding:6px 4px;">OmniStudio</td></tr>
+     <tr><td style="padding:6px 4px;">Best for</td><td style="padding:6px 4px;">Process + data logic, no license needed</td><td style="padding:6px 4px;">Guided process, richer UI</td><td style="padding:6px 4px;">Summary display, quick actions</td></tr>
+   </table>
+   <p style="margin-top:12px;">The real-world pattern: a FlexCard shows a summary with a button that launches an OmniScript for the actual guided process — the two are frequently paired, not competing.</p>
+   <p><strong>Exam heuristic:</strong> if a scenario names OmniStudio, FlexCards, or OmniScripts explicitly, reach for the OmniStudio answer. If it's a generic "guided process" with no OmniStudio context given, Screen Flow is the safer default — it doesn't assume a license the scenario didn't mention.</p>`},
+
+ {cat:"SF Foundations", title:"Can You Skip OmniStudio Entirely?", body:`
+   <p>Yes — and it's worth being clear-eyed about this as a real architectural choice, not a trick question. OmniStudio is a declarative ACCELERATOR built on the same primitives you'd use by hand, not an irreplaceable layer:</p>
+   <ul>
+     <li>FlexCard / OmniScript → auto-generate an LWC. A hand-written LWC (or Screen Flow) is the manual equivalent.</li>
+     <li>Integration Procedure → server-side orchestration. An Apex class is the manual equivalent.</li>
+     <li>Data Mapper → Salesforce read/write. SOQL/DML in Apex, or Flow's Get/Create/Update Records, is the manual equivalent.</li>
+   </ul>
+   <p><strong>Reasons teams choose OmniStudio:</strong> speed and lower-code maintenance (a BA can adjust it without a deploy), built-in reusability patterns for minimizing server round-trips, and OmniOut for running the same experience outside Salesforce.</p>
+   <p><strong>Reasons teams choose native LWC/Apex/Flow instead:</strong> no separate license/cost, an already-strong pro-code team, mature Apex testing/CI-CD tooling, and finer-grained control over each server call.</p>
+   <p>A described org with strong Apex/LWC skills and no OmniStudio licensing choosing the native path is a legitimate answer, not an error — the exam names OmniStudio as something to KNOW, not something that's mandatory for every implementation.</p>`},
+
+ {cat:"SF Foundations", title:"Standard vs. Dynamic Dashboards: Running User", body:`
+   <p>Every dashboard component points at a source report, not raw data — so a dashboard's security depends entirely on WHOSE access that underlying report runs as. This is the single most important dashboard security concept:</p>
+   <ul>
+     <li><strong>Standard Dashboard</strong> runs as ONE fixed "running user," the same for every viewer. Everyone sees identical data — including data they personally couldn't access on their own — because it's filtered through the running user's permissions, not the viewer's.</li>
+     <li><strong>Dynamic Dashboard</strong> runs as "the logged-in user." Each viewer sees data filtered through their OWN access, so the same dashboard shows different slices of data to different people.</li>
+   </ul>
+   <p><strong>When to use which:</strong> Standard, when everyone genuinely should see the same numbers (an exec KPI dashboard). Dynamic, when different roles should see different slices of the same underlying data — e.g. regional sales managers each seeing only their own region's Revenue Cloud quotes and orders on the same dashboard layout.</p>`},
+
+ {cat:"SF Foundations", title:"The Sharing & Security Model, as Concentric Rings", body:`
+   <p>Salesforce's sharing model is layered — each layer can only WIDEN access beyond what came before it, never restrict:</p>
+   <ol style="padding-left:20px; color:var(--text-dim); font-size:14.5px; line-height:1.6;">
+     <li><strong>Organization-Wide Defaults (OWD)</strong> — the floor. Private, Public Read Only, or Public Read/Write, set per object.</li>
+     <li><strong>Role Hierarchy</strong> — if OWD is Private, users above a record's owner automatically inherit access to it.</li>
+     <li><strong>Sharing Rules</strong> — criteria- or ownership-based, opening up additional access. Can only grant, never restrict.</li>
+     <li><strong>Manual Sharing</strong> — one specific record, shared one-off by a user or admin.</li>
+     <li><strong>Apex Managed Sharing</strong> — programmatic, for logic too complex for declarative rules.</li>
+   </ol>
+   <p><strong>Field-Level Security (FLS) sits outside this stack entirely</strong> — it's an orthogonal layer. A user can pass every ring above and still see a record, while a specific FIELD on that record stays hidden via FLS on their Profile or Permission Set. Object/row access and field access are independently controlled.</p>
+   <p><strong>Revenue Cloud tie-in:</strong> this is exactly why "remove the permission" (a data-access-layer control) is the correct way to restrict an asset action, while "hide the button" (a page-layout control) is not — a hidden button doesn't touch sharing, FLS, or permissions at all, so the underlying API call still succeeds if the permission is still granted.</p>`},
+
+ {cat:"SF Foundations", title:"User Access Policies (UAP)", body:`
+   <p>A standard, out-of-the-box Salesforce feature (not a custom build, not a managed package) for automating access provisioning — Setup → User Access Policies, with a matching official Trailhead module.</p>
+   <ul>
+     <li><strong>Not on by default</strong> — an admin has to enable it first, in User Management Settings.</li>
+     <li><strong>What it automates:</strong> granting or revoking Permission Sets, Permission Set Groups, Permission Set Licenses, Package Licenses, Groups, and Queues.</li>
+     <li><strong>Criteria:</strong> matched against standard or custom fields on the User object (Text, Picklist, Number, Checkbox).</li>
+     <li><strong>Triggers:</strong> on user create, on user update, or applied manually/on-demand to users who already meet criteria.</li>
+   </ul>
+   <p>Salesforce positions this explicitly as the no-code replacement for what used to require custom Flow or Apex automation to provision user access — a org using UAP to auto-assign a Permission Set Group based on a user's role or department is using the feature exactly as designed, not building something unusual.</p>`},
+
  {cat:"Permissions", title:"Licenses to Plan For (PSLs)", body:`
    <p>Before any permission set can be assigned, the underlying Permission Set License has to exist and be assigned at the org/user level. Plan for these based on which modules the implementation touches:</p>
    <ul>
@@ -589,7 +678,23 @@ const CHECKLISTS = [
      "Build an Integration Procedure that reads a Salesforce record via a Data Mapper Extract",
      "Wire the FlexCard to call that Integration Procedure as its data source, instead of a direct data source",
      "Add a Data Mapper Load step to write a change back to Salesforce from the OmniScript",
-     "Compare the round trips: one Integration Procedure call vs. multiple direct calls, and confirm the performance difference conceptually"]}
+     "Compare the round trips: one Integration Procedure call vs. multiple direct calls, and confirm the performance difference conceptually"]},
+   {name:"SF Foundations", items:[
+     "Build a Screen Flow with 2-3 screens, a Decision element, and a Get/Update Records step",
+     "Build a Record-Triggered Flow (before-save) and confirm it runs faster than an after-save equivalent for a simple field update",
+     "Build a basic LWC with an @api property set from a parent, and a @wire call to an Apex method",
+     "Fire a custom event from the child LWC and handle it in the parent",
+     "Create a Permission Set (not a profile change) granting access to a custom object; assign it to a test user and confirm access",
+     "Build a junction object modeling a many-to-many relationship between two objects, with two master-detail relationships",
+     "Rebuild one simple OmniScript-style guided process as a plain Screen Flow instead, and compare what each version can/can't do"]},
+   {name:"SF Foundations: Reports, Sharing & Data Model", items:[
+     "Build a custom report type joining two objects with no standard combination available",
+     "Build one Summary report and one Matrix report on the same data; compare what each can show",
+     "Build a Standard Dashboard and a Dynamic Dashboard from the same report; view both as two different test users and compare what each sees",
+     "Set OWD to Private on a custom object, then add a Sharing Rule; confirm it only grants, never restricts, access",
+     "Hide one field via Field-Level Security on a Permission Set; confirm the record is still visible but that field isn't",
+     "Build a Lookup relationship and a Master-Detail relationship between the same two objects (in two separate object pairs); delete a parent in each and compare what happens to the children",
+     "Enable User Access Policies in User Management Settings, then build one policy that auto-assigns a Permission Set Group based on a custom User field"]}
  ]},
  {id:"readiness7", title:"Implementation Readiness", weight:"14%", sections:[
    {name:"Implementation Readiness", items:[
@@ -694,6 +799,8 @@ const SECTION_TO_CATEGORY = {
   "Objects & Relationships": "Order Mgmt",
   "Advanced Approvals": "Approvals",
   "OmniStudio": "OmniStudio",
+  "SF Foundations": "SF Foundations",
+  "SF Foundations: Reports, Sharing & Data Model": "SF Foundations",
   "Implementation Readiness": "Permissions",
   "Manual Revenue Cloud Activation (pre-Go)": "Permissions",
   "Project Delivery & UAT": "Project Delivery",
