@@ -178,7 +178,7 @@ const CARDS = [
  {cat:"Advanced Configurator", term:"Local variable", def:"A value scoped to a single rule. Works for a one-off case, but repeating the same local variable across multiple rules is a maintainability red flag — a global constant is preferred once reuse is likely."},
  {cat:"Advanced Configurator", term:"Default value (CML)", def:"A pre-selected value on a relation when the configuration loads, e.g. 'default Laptopi58GB(2);' — sets an initial quantity/selection without the user having to choose it."},
  {cat:"Advanced Configurator", term:"Context-aware rule", def:"A CML rule that references a field OUTSIDE the bundle itself — e.g. an Opportunity or Account field — to dynamically adjust which options or attribute values are valid at runtime, not just sibling attributes within the same configuration."},
- {cat:"Advanced Configurator", term:"define (verified)", def:"The REAL keyword for a global constant in CML, confirmed in Salesforce's official CML User Guide — e.g. define COLORS [\"Red\", \"Blue\", \"White\"]. Not 'global constant', which was an earlier unverified guess."},
+ {cat:"Advanced Configurator", term:"define", def:"The keyword for a global constant in CML — e.g. define COLORS [\"Red\", \"Blue\", \"White\"]. Defines a value once, referenced everywhere in the model."},
  {cat:"Advanced Configurator", term:"Visual Builder term → raw CML construct", def:"Basic Logic Constraint = Logical Constraint (constraint(...) with no implication). Conditional Logic Constraint = the Implication Operator (->). Dynamic Message Rule = Message Rule (message(...) with Info/Warning/Error severity). Require Rule = Require Rule (require(...), same name in both)."},
  {cat:"Advanced Configurator", term:"require() — verified syntax", def:"require(logic expression, relationship[type]{var = value, .., var = value}); — auto-includes a specific type with specific attribute values when a condition is met. Optional trailing string argument for an explanation message. Confirmed directly from the official CML User Guide's House example."},
  {cat:"Advanced Configurator", term:"message() — verified syntax", def:"message(logical expression, string, [args...], severity); — severity is Info, Warning, or Error. Info requires no action. Warning lets the user continue the current task but blocks the NEXT step until addressed. Error blocks the current task entirely — except in the Transaction Line Editor, where a user can still save despite an Error message."},
@@ -486,24 +486,34 @@ const CONCEPTS = [
      <li>Sync or refresh the underlying data</li>
    </ol>`},
 
- {cat:"Advanced Configurator", title:"Verified CML Example: Red/Blue Case Constraint", body:`
-   <p><strong>Scenario:</strong> a laptop bundle offers a Case color (Red/Blue). Rule: picking Red should trigger a warning if quantity exceeds 2, and if the room count exceeds a threshold a specific accessory is required.</p>
-   <p style="color:var(--good); font-size:12.5px;">Rebuilt using verified syntax from Salesforce's official CML User Guide (Winter '25) — not illustrative this time.</p>
-   <p><strong>Global constants use 'define', not 'global constant':</strong></p>
+ {cat:"Advanced Configurator", title:"Verified CML Syntax by Construct", body:`
+   <p>Each snippet below is pulled directly from Salesforce's official CML User Guide (Winter '25), keeping the guide's own example objects (House/Room) rather than forcing everything into one artificial scenario.</p>
+
+   <p><strong>1. Global constants — 'define', not 'global constant':</strong></p>
    <pre style="background:var(--surface-2); padding:10px; border-radius:8px; font-size:12.5px; color:var(--text); overflow-x:auto;">define COLORS ["Red", "Blue", "White"]</pre>
-   <p><strong>Relation with cardinality — confirmed [min..max] syntax:</strong></p>
+   <p>This declares COLORS as a fixed list of three strings, available anywhere in the model. Any type can now reference COLORS instead of retyping the list of valid colors. If a fourth color needs to be added later, it's a one-line change here rather than a hunt through every type that used colors.</p>
+
+   <p><strong>2. Relation with cardinality — confirmed [min..max] syntax:</strong></p>
    <pre style="background:var(--surface-2); padding:10px; border-radius:8px; font-size:12.5px; color:var(--text); overflow-x:auto;">type House {
    relation rooms : Room[0..10];
    string color = COLORS;
 }</pre>
-   <p><strong>Logical Constraint</strong> (the Visual Builder's "Basic Logic Constraint" — a statement that must hold true):</p>
+   <p>The <strong>relation</strong> keyword declares that a House has a rooms relationship to the Room type, with cardinality [0..10] — meaning a house can have anywhere from zero to ten rooms. The House's own <strong>color</strong> variable pulls its allowed values from the COLORS constant defined above, rather than hardcoding the list again on the House type itself.</p>
+
+   <p><strong>3. Logical Constraint</strong> (the Visual Builder's "Basic Logic Constraint" — a statement that must hold true):</p>
    <pre style="background:var(--surface-2); padding:10px; border-radius:8px; font-size:12.5px; color:var(--text); overflow-x:auto;">constraint(color == "Red" ? windowShape == "Oval" : windowShape == "Square",
   "If color is red, windows should be oval. Otherwise square.");</pre>
-   <p><strong>Implication Operator (→)</strong> (the Visual Builder's "Conditional Logic Constraint" — if precondition, then postcondition):</p>
+   <p>This uses the conditional operator (<strong>?:</strong>) inside a constraint(): if color equals "Red", then windowShape must equal "Oval"; otherwise windowShape must equal "Square". It's called a Logical Constraint because it's unconditionally enforced every time — there's no scenario where this rule doesn't apply, only a branch in what it requires. The second argument is the failure-explanation string shown if the rule is violated.</p>
+
+   <p><strong>4. Implication Operator (→)</strong> (the Visual Builder's "Conditional Logic Constraint" — if precondition, then postcondition):</p>
    <pre style="background:var(--surface-2); padding:10px; border-radius:8px; font-size:12.5px; color:var(--text); overflow-x:auto;">constraint((color == "Red") -> (size == "S"));</pre>
-   <p><strong>Message Rule</strong> (the Visual Builder's "Dynamic Message Rule" — real syntax takes a severity: Info, Warning, or Error):</p>
+   <p>The <strong>-></strong> symbol reads as "implies." If the precondition (color == "Red") is true, the postcondition (size == "S") must also be true. Critically, if the precondition is FALSE, the postcondition is simply not evaluated at all — the rule goes dormant rather than forcing any particular size. This is what separates it from the Logical Constraint above: that one always enforces something (Oval or Square); this one only enforces anything when the Red condition is actually met.</p>
+
+   <p><strong>5. Message Rule</strong> (the Visual Builder's "Dynamic Message Rule" — real syntax takes a severity: Info, Warning, or Error):</p>
    <pre style="background:var(--surface-2); padding:10px; border-radius:8px; font-size:12.5px; color:var(--text); overflow-x:auto;">message(rooms.size > 8, "That's {} rooms!", rooms[Room], "Info");</pre>
-   <p><strong>What this corrects from the earlier version:</strong> constants use 'define', not 'global constant'. Conditional logic uses the implication operator (->), not an if/block structure. Message severity (Info/Warning/Error) is a real, required-style parameter — Warning blocks the next step until addressed; Error blocks the current task entirely; Info requires no action.</p>`},
+   <p>Reading the arguments in order: (1) the condition — room count greater than 8; (2) the message text, with a <strong>{}</strong> placeholder; (3) the value that fills that placeholder — the actual room count; (4) the severity, "Info". Because it's Info-level, this message displays but never blocks the user from continuing — it's purely informational, unlike a Warning (blocks the next step) or an Error (blocks the current task).</p>
+
+   <p><strong>Key points:</strong> constants use 'define'. An unconditional rule (Logical Constraint) always enforces something; a conditional rule (Implication Operator) only enforces something when its precondition is true. Message severity (Info/Warning/Error) is a real, required parameter that changes actual runtime blocking behavior, not just cosmetic styling.</p>`},
 
  {cat:"Advanced Configurator", title:"Official CML Example: The MediaRoom Require Rule", body:`
    <p>Straight from Salesforce's own CML User Guide's worked "Modeling a House" example — this is the real Require Rule construct, and it's the direct source behind a documented exam question shape.</p>
@@ -525,7 +535,7 @@ type MediaRoom : Room;</pre>
      <li><strong>The second require() call</strong> shows the optional explanation-message argument: a string shown if the requirement can't be satisfied.</li>
      <li><strong>type MediaRoom : Room;</strong> — MediaRoom is declared as a subtype of Room (inheritance), so it can be referenced inside the rooms relationship.</li>
    </ul>
-   <p><strong>Correcting a circulating exam-prep version:</strong> some third-party practice questions show cardinality written as Room[4,5] (comma, no dots) as a plausible answer choice. That notation does NOT match the confirmed [min..max] syntax in Salesforce's own guide — treat comma-style cardinality notation as a likely-fabricated distractor if you see it.</p>
+   <p><strong>Trap to watch for:</strong> comma-style cardinality notation like Room[4,5] (comma, no dots) does NOT match the confirmed [min..max] syntax in Salesforce's own guide — treat it as a likely-fabricated distractor if it appears as an answer choice.</p>
    <p><strong>Exam-recognition shape:</strong> "if [condition], then [type] with [these specific attribute values] must be included" is the Require Rule pattern — distinct from a plain constraint(), which enforces a rule but doesn't auto-add a component.</p>`},
 
  {cat:"Advanced Configurator", title:"Advanced Configurator Setup Sequence", body:`
