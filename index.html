@@ -153,6 +153,11 @@ const CARDS = [
  {cat:"Pricing/BRE", term:"RevSignaling.SignalingApexProcessor", def:"The Apex interface a pricing-hook class must implement; has a single execute method."},
  {cat:"Pricing/BRE", term:"Apex hook placement rule", def:"With the Revenue Management process type, an Apex hook must be the first or last element in the Procedure Plan sequence."},
  {cat:"Pricing/BRE", term:"Is Price Impacting", def:"Flag on a Product Classification attribute; must be true, plus a Price Adjustment Schedule entry and a Sync Pricing Data run, before an attribute affects price."},
+ {cat:"Pricing/BRE", term:"The three 'default' pricing procedures", def:"(1) Revenue Management Default Pricing Procedure — prices standard sales transactions (quotes/orders), tied to SalesTransactionContext. (2) Default Product Discovery Pricing Procedure — prices the catalog while browsing, tied to ProductDiscoveryContext. (3) Default Discovery Procedure (aka Default Salesforce Pricing Discovery Procedure) — feeds data INTO derived pricing calculations. All three sound alike; all three are genuinely different."},
+ {cat:"Pricing/BRE", term:"Default Discovery Procedure — what it actually does", def:"NOT about Product Discovery/browsing at all — it's the data-gathering engine behind Derived Pricing. Without it, Price Management can't retrieve the dynamic data needed to calculate a derived price at all. It has three elements and populates a Context Definition that the derived-price calculation reads from."},
+ {cat:"Pricing/BRE", term:"Asset Discovery element", def:"One of the three elements in the Default Discovery Procedure. Retrieves data from the customer's EXISTING assets — original price, quantity, active contract period, custom fields — so a derived price can be calculated relative to what they already own. Classic use case: renewal/upsell pricing that depends on the existing subscription."},
+ {cat:"Pricing/BRE", term:"Discovery Procedure's other data sources", def:"Beyond Asset Discovery, the procedure also fetches from Products (list price, net unit price, subtotal of specific products) and the Quote Header (total value of the current quote or a specific segment of it)."},
+ {cat:"Pricing/BRE", term:"Why the naming collision happens", def:"'Discovery' has two unrelated meanings colliding in near-identical procedure names: Product Discovery = discovering which PRODUCTS a customer can browse/see. Discovery Procedure = discovering PRICING-RELEVANT DATA (assets, products, quote) to feed a calculation. Same word, completely different purpose."},
 
  {cat:"Advanced Configurator", term:"CML", def:"Constraint Modeling Language — how logic is written in the Advanced Configurator. Runs on the Constraint Rules Engine."},
  {cat:"Advanced Configurator", term:"ConstraintEngineNodeStatus", def:"A Text Area (5000) field, read/write, kept OFF page layouts. Created on Quote Line Item, Order Product, and Asset Action Source. Then added as an INPUTOUTPUT/STRING attribute to the SalesTransactionItem node in the extended context definition."},
@@ -439,6 +444,16 @@ const CONCEPTS = [
      <li><strong>Pick Advanced (CML-based)</strong> when the catalog is large or deeply nested, attributes interact with each other, or you need the engine to auto-resolve conflicts rather than making the rule designer chase every combination by hand.</li>
    </ul>
    <p>Since Advanced is the default engine for new orgs and Standard is in maintenance mode, the exam is more likely to test "recognize which engine a described scenario needs" than "build a Standard Configurator rule from scratch."</p>`},
+
+ {cat:"Pricing/BRE", title:"The Three 'Default' Procedures, Disambiguated", body:`
+   <p>The manual activation sequence creates and selects THREE similarly-named procedures — this is a real, documented naming collision, and worth having disambiguated clearly:</p>
+   <ol style="padding-left:20px; color:var(--text-dim); font-size:14.5px; line-height:1.6;">
+     <li><strong>Revenue Management Default Pricing Procedure</strong> — prices standard sales transactions (quotes/orders). Tied to SalesTransactionContext. This is the one doing the actual pricing math on what's being sold right now.</li>
+     <li><strong>(Default) Product Discovery Pricing Procedure</strong> — prices the catalog while a customer/rep is BROWSING, before a transaction exists. Tied to ProductDiscoveryContext, works alongside qualification/disqualification rules.</li>
+     <li><strong>Default Discovery Procedure</strong> (also called Default Salesforce Pricing Discovery Procedure) — has nothing to do with browsing at all. It's the data-gathering engine behind Derived Pricing.</li>
+   </ol>
+   <p><strong>Why #3 causes so much confusion:</strong> "Discovery" here means discovering PRICING-RELEVANT DATA, not discovering PRODUCTS. It has three elements, one confirmed as <strong>Asset Discovery</strong> — pulling data from the customer's existing assets (original price, quantity, active contract period, custom fields) so a derived price can be calculated relative to what they already own. It also pulls from Products (list price, net unit price, subtotal) and the Quote Header (total value of the quote or a segment). All of this gets written into a Context Definition that the derived-price calculation actually reads from — without this procedure, derived pricing simply can't retrieve the dynamic data it needs.</p>
+   <p><strong>Memory anchor:</strong> if a scenario is about what a customer sees while shopping → Product Discovery Pricing Procedure. If it's about calculating today's transaction price → Revenue Management Default Pricing Procedure. If it's about a price that depends on data gathered from elsewhere (an existing asset, another product, the quote total) → Discovery Procedure.</p>`},
 
  {cat:"Pricing/BRE", title:"Pricing Procedure Execution Order", body:`
    <p>A pricing procedure is an ORDERED stack of elements, and order genuinely changes the result:</p>
@@ -790,7 +805,8 @@ const CHECKLISTS = [
      "Turn On Salesforce Pricing, then create AND select the Revenue Management Default Pricing Procedure",
      "Extend AND select the Product Discovery Context Definition (separate from Sales Transaction Context)",
      "Create, enable, AND select the Default Product Discovery Pricing Procedure",
-     "Create AND select the Default Salesforce Pricing Discovery Procedure (a third, distinct procedure from the two above)",
+     "Create AND select the Default Discovery Procedure (aka Default Salesforce Pricing Discovery Procedure) — confirm it's the data-gathering engine for Derived Pricing, not a third Product Discovery procedure",
+     "Build one derived product; confirm its Asset Discovery element pulls original price/quantity/contract period from an existing asset to inform the derived price",
      "Activate the Standard Price Book as the final step",
      "Do the whole sequence once by hand, then compare it to what Salesforce Go automates in a Winter '26+ org, to see exactly which manual steps it's collapsing"]},
    {name:"Project Delivery & UAT", items:[
