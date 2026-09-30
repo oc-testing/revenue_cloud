@@ -213,6 +213,7 @@ const CARDS = [
  {cat:"Assets", term:"Managed Asset Viewer", def:"Consolidated, filterable list of everything an account owns, embedded on Account/Contract pages — entry point for amend/renew/cancel."},
  {cat:"Assets", term:"The migrated-asset trap", def:"Amend/renew/cancel only work on assets created through standard order activation. Migrated or manually-created assets lack the needed data relationships — fix is a new order through Revenue Cloud, not patching the asset."},
  {cat:"Assets", term:"Automatic Renewal vs. Override Renewal Term", def:"Automatic extends at term end per the predefined term. Override lets the rep set custom start/end dates and can trigger a refund quote for unused portion."},
+ {cat:"Assets", term:"Renewing an EXPIRED asset", def:"Uses the same Renew action and flow as any renewal — no separate process. But it REQUIRES Override Renewal Term, not Automatic Renewal, since there's no longer a 'current term' to auto-extend from. The rep manually sets new start/end dates (typically starting today). Officially confirmed to support late renewals and trial extensions."},
  {cat:"Assets", term:"Rollback tool", def:"Reverses the most recent future-dated transaction on an asset."},
  {cat:"Assets", term:"Lot-based renewals", def:"Honor original purchase pricing across multiple renewal transactions; price uplifts can apply to individual lots."},
  {cat:"Assets", term:"Access Customer Asset Lifecycle Management APIs", def:"The permission required to use amend/renew/cancel APIs at all. Also requires Read access to Asset, Asset Action, Asset Action Source, and Asset State Period. This is the backend gate — separate from anything on a page layout."},
@@ -231,6 +232,8 @@ const CARDS = [
  {cat:"DRO", term:"Fulfillment Plan vs. Product Fulfillment Scenario", def:"A Fulfillment Plan is the actual tracked execution (stages, tasks, SLAs). A Product Fulfillment Scenario is the reusable template assigned to products."},
  {cat:"DRO", term:"In-Flight Order Changes", def:"Add/remove products or adjust an order already in fulfillment, without cancel-and-rebill. Requires Place Supplemental Orders permission + In-Flight Amendments setting. Original order becomes Superseded."},
  {cat:"DRO", term:"The assetization boundary", def:"In-flight order changes only work if NO assets have been created from the order yet. Once assetized, use the standard amendment path instead."},
+ {cat:"DRO", term:"Decomposition Scope", def:"Controls how many fulfillment line item records are created from decomposition. Four levels: Order Line Item (default, one-to-one), Order (a single fulfillment line item for ALL order products decomposing into it), Bundle (a new instance per bundle within an order), Account (a single instance across ALL orders from the same account)."},
+ {cat:"DRO", term:"Decomposition Scope — when to use each", def:"Order Line Item: standard, granular tracking. Order: when downstream fulfillment doesn't need per-line detail. Bundle: when a bundle should fulfill/consolidate as one unit regardless of order. Account: when a downstream product (e.g. a subscription/license pool) should be tracked once per customer, not duplicated across every order they place."},
 
  {cat:"Permissions", term:"PSL vs. Permission Set", def:"A Permission Set License unlocks a feature category org-wide (entitlement layer). A Permission Set grants specific object/feature access to a user (grant layer). Both are needed, PSL first."},
  {cat:"Permissions", term:"Browse Catalog — 3 required permission sets", def:"ProductImportApi + Product Catalog Management Viewer + Submit Transactions and Fulfillment User + (Product Discovery User for the button itself)."},
@@ -251,6 +254,8 @@ const CARDS = [
  {cat:"APIs", term:"Amend / Renew / Cancel APIs", def:"Dedicated asset-lifecycle endpoints mirroring the UI actions — distinct from PST, which is for new sales."},
  {cat:"APIs", term:"Run Config Rules", def:"Invocable action running Hide/Disable, Message, or Recommend configuration rules; callable from Flow or the REST API."},
  {cat:"APIs", term:"Supplemental Transaction", def:"API behind in-flight order changes — creating a supplemental order against one still in fulfillment."},
+ {cat:"APIs", term:"Products List (POST)", def:"A composite Business API for Product Discovery — 'get a list of products for a specified catalog, category, or subcategory.' Called via POST with a JSON body (Catalog Input, Criteria Input, Filter Input, etc.) — this is the endpoint you'd hit in Postman to pull product/catalog data programmatically rather than through the UI."},
+ {cat:"Billing", term:"Where the Target Override discount actually lives", def:"The Discount Distribution Service's target override discount type is configured as an ELEMENT inside a pricing procedure — not a general Revenue Settings toggle, and not a Flow. It's object/procedure-level configuration, same layer as Price Adjustment Matrix and other pricing procedure elements."},
 
  {cat:"Order Mgmt", term:"Object State Definition", def:"Defines valid states and transitions for the Order object, replacing hardcoded lifecycle stages."},
  {cat:"Order Mgmt", term:"Object State Value naming rule", def:"Must exactly match the API name of the order Status picklist value, or lifecycle transitions break."},
@@ -494,6 +499,19 @@ const CONCEPTS = [
      <li>Amendments/cancellations ripple back through as <strong>Credit Memos</strong>, applied automatically against affected invoices.</li>
    </ol>
    <p>This is why a scenario like "the order changed but the invoice is wrong" almost always traces back to the Billing Schedule not having regenerated — not the Order itself, and not the Invoice object directly.</p>`},
+
+ {cat:"Permissions", title:"Revenue Settings: The Central Switchboard", body:`
+   <p><strong>Revenue Settings</strong> (sometimes labeled Revenue Lifecycle Management Settings in Setup) is the centralized configuration area for the entire product. Most advanced Revenue Cloud capabilities are OFF by default and have to be explicitly enabled here before they show up anywhere else in the org — it's the single place nearly every feature-level toggle in this app traces back to.</p>
+   <p><strong>What lives here, pulled together from across every domain:</strong></p>
+   <ul>
+     <li><strong>Foundational activation:</strong> Enable Revenue Cloud → Enable Quotes → Enable Orders → Enable Product Configurator → Turn On Context Service → Extend Sales Transaction Context → Turn On Salesforce Pricing → the three "default" pricing/discovery procedures → Activate the Standard Price Book.</li>
+     <li><strong>Advanced Configurator:</strong> Set Up Advanced Configuration Rules and Constraints — the specific setting that makes Advanced Configurator the default engine.</li>
+     <li><strong>Pricing/Apex hooks:</strong> Procedure Plan Orchestration for Pricing + Exclude Default and Sales Transaction Type Pricing Procedures — required together before a hook will actually fire.</li>
+     <li><strong>Catalog/Discovery:</strong> Use Indexed Data for Product Listing and Search (with its index-rebuild dependency), Guided Product Selection.</li>
+     <li><strong>Orders/DRO:</strong> In-Flight Amendments, Dynamic Revenue Orchestrator Settings (Decomposition Scope, Custom Fulfillment Scope Config).</li>
+   </ul>
+   <p><strong>What's NOT here, as a deliberate contrast:</strong> the Discount Distribution Service's target override discount type isn't a Revenue Settings toggle at all — it's configured as an element inside a pricing procedure. Not every configuration point lives in the switchboard; some are object/procedure-level instead.</p>
+   <p><strong>Exam-recognition pattern:</strong> if a feature "isn't showing up" or "isn't working" in a scenario, Revenue Settings is the first place to check — before assuming it's a permission, data, or page-layout problem.</p>`},
 
  {cat:"Permissions", title:"Where Toggles Live", body:`
    <p>Nearly every advanced Revenue Cloud feature is gated behind a setting in <strong>Setup → Revenue Settings</strong> (sometimes labeled Revenue Lifecycle Management Settings). This is the first place to check whenever a feature "isn't showing up" — before assuming it's a permission or data problem.</p>
@@ -869,6 +887,7 @@ const CHECKLISTS = [
    {name:"Asset Lifecycle", items:[
      "Amend an asset; confirm new Asset Action + new ASP",
      "Renew via Automatic Renewal, then Override Renewal Term",
+     "Let an asset's term lapse (or find/edit one already expired) and renew it; confirm Automatic Renewal isn't available and Override Renewal Term with manual dates is required",
      "Cancel an asset; confirm no new ASP is created",
      "Attempt to amend a manually-created asset; confirm it fails",
      "Use the Rollback tool on a future-dated transaction",
